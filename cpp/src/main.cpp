@@ -24,10 +24,15 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 
 #include "triplet_challenge.h"
 
+#define CLOCKS_PER_MILLIS   (CLOCKS_PER_SEC / 1000)
+
 int main(int argc, char* argv[]) {
+    clock_t start_t = clock(), end_t;
+
     // Ensure correct arguments
     if (argc < 2) {
         std::cerr << "Missing input file. e.g. " << argv[0] << " file.txt\n";
@@ -58,6 +63,10 @@ int main(int argc, char* argv[]) {
     for (const auto& triplet : triplets) {
         std::cout << triplet.words << " - " << triplet.count << "\n";
     }
+
+
+    end_t = clock();
+    printf ("Took %ld ms\n", ((end_t - start_t) / CLOCKS_PER_MILLIS) );
 
     return 0;
 }
