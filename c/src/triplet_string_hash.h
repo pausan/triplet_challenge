@@ -8,6 +8,43 @@
 #include <stdint.h>
 
 // -----------------------------------------------------------------------------
+// fnvHash32v
+//
+// Simple, yet powerful algorithm to avoid collisions on english words based
+// on FNV 1a. The last 'v' is because I've introduced a variation, since the
+// result is initialized using first 4 words.
+//
+// Although as any algorithm, never collision free.
+//
+// Based on FNV/1a algorithm from:
+//  http://isthe.com/chongo/tech/comp/fnv/
+//
+// See:
+//   https://softwareengineering.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
+// -----------------------------------------------------------------------------
+inline uint32_t fnvHash32v(const uint8_t *data, size_t n) {
+  const uint32_t PRIME = 16777619;
+  uint32_t result = 0;
+  size_t i = 0;
+
+  // Hopefully this should affect word collisions and give us some
+  // speed boost as well (NOTE: I've not verified this!)
+  if (n >= 4) {
+    result = ((uint32_t *)data)[0];
+    i = 4;
+  }
+
+  // continue iterating through the rest of the string
+  for( ; i < n; i++) {
+    result ^= data[i];
+    result *= PRIME;
+  }
+
+  return result;
+}
+
+
+// -----------------------------------------------------------------------------
 // TripletStringHash / TripletStringHashNode
 //
 // Tripled String Hash has been made only for this challenge, and assumes
@@ -46,7 +83,7 @@ typedef struct _TripletStringHash {
 } TripletStringHash;
 
 TripletStringHash *tshInit (uint32_t desiredSize);
-void tshAdd (TripletStringHash *tsh, const char *word, size_t len);
+void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash);
 void tshFree (TripletStringHash *tsh);
 
 #endif /* _TRIPLET_STRING_HASH_H_ */

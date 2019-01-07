@@ -145,10 +145,14 @@ void countTripletsFromMemory (
     return;
   }
 
-  // TODO: initialize hashes and create hash of the next word only
-  // hash1 = fnvHash32v (word1, word2 - 1);
-  // hash2 = fnvHash32v (word2, word3 - 1);
-  // hash3 = fnvHash32v (word3, word4 - 1);
+#define ROL32(x, bits) ( (((uint32_t)x) << bits) | (((uint32_t)x) >> (32 - bits)) )
+
+  // reduce computing by reusing hashes as we move along instead of rehashing
+  // on every word that we advance
+  uint32_t hash1, hash2, hash3;
+  hash1 = fnvHash32v ((const uint8_t *)word1, (size_t)(word2 - word1 - 1));
+  hash2 = fnvHash32v ((const uint8_t *)word2, (size_t)(word3 - word2 - 1));
+  hash3 = fnvHash32v ((const uint8_t *)word3, (size_t)(word4 - word3 - 1));
 
   // Let's assume every word is around 6 chars and every triplet around 15.
   // Let's assume every triplet appears mostly once.
@@ -159,7 +163,10 @@ void countTripletsFromMemory (
   );
 
   while ((ptr < endPtr) && (word4 != NULL)) {
-    tshAdd (tsh, word1, (size_t)(word4 - word1 - 1));
+    uint32_t tripletHash = ROL32(hash1, 16) ^ ROL32(hash2, 8) ^ hash3;
+    //uint32_t tripletHash = fnvHash32v((const uint8_t *)word1, (size_t)(word4 - word1 - 1));
+
+    tshAdd (tsh, word1, (size_t)(word4 - word1 - 1), tripletHash);
 
     //printf ("%.*s\n", (int)(word4 - word1 - 1), word1);
     //printf ("Triplet[%08x]: -%.*s-\n", tripletHash, (int)(word4 - word1 - 1), word1);
@@ -172,6 +179,12 @@ void countTripletsFromMemory (
     word2 = word3;
     word3 = word4;
     word4 = consumeWord(word3+1, endPtr);
+
+    if (word4 != NULL) {
+      hash1 = hash2;
+      hash2 = hash3;
+      hash3 = fnvHash32v ((const uint8_t *)word3, (size_t)(word4 - word3 - 1));
+    }
 
     ptr++;
   }
