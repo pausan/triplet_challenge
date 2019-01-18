@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-CFLAGS := -g -O3 -pedantic -Wall -Wextra -Werror
+CFLAGS := -g -O3 -pedantic -Wall -Wextra
 SRC_C := $(wildcard c/src/*.c)
 OBJ_C := $(foreach file,$(SRC_C),$(BUILD_DIR)/$(file:.c=.o))
 DEP := $(OBJ_C:.o=.d)
@@ -23,7 +23,7 @@ all: $(OUTPUT_CPP) $(OUTPUT_C) check
 $(BUILD_DIR):
 	mkdir -p $@/c/src $@/cpp/src $@/cpp/test
 
-$(BUILD_DIR)/%.o: %.c
+$(BUILD_DIR)/%.o: %.c %.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OUTPUT_C): $(BUILD_DIR) $(OBJ_C)

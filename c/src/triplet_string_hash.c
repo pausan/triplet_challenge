@@ -36,12 +36,12 @@ static const uint32_t HT_PRIMES[HT_PRIMES_SIZE] = {
 TripletStringHash *tshInit (uint32_t desiredSize) {
   uint32_t i;
 
-  TripletStringHash *tsh = (TripletStringHash*)malloc (sizeof (TripletStringHash));
+  TripletStringHash *tsh = (TripletStringHash*)calloc (sizeof (TripletStringHash), 1);
   if (tsh == NULL)
     return tsh;
 
   tsh->slotsAllocated = 0;
-  tsh->slotsUsageCount = 0;
+  //tsh->slotsUsageCount = 0;
   tsh->nodes = NULL;
 
   // find which space will suit the hash table best
@@ -52,10 +52,10 @@ TripletStringHash *tshInit (uint32_t desiredSize) {
     }
   }
 
-  tsh->nodes = (TripletStringHashNode*)malloc (
-    tsh->slotsAllocated * sizeof (TripletStringHashNode)
+  tsh->nodes = (TripletStringHashNode*)calloc (
+    sizeof (TripletStringHashNode),
+    tsh->slotsAllocated
   );
-  memset (&tsh->nodes[0], 0, tsh->slotsAllocated * sizeof (TripletStringHashNode));
 
   return tsh;
 }
@@ -75,7 +75,7 @@ void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash
     // node->hash = hash;
     node->count = 1;
 
-    tsh->slotsUsageCount ++;
+    //tsh->slotsUsageCount ++;
     return;
   }
 
@@ -138,8 +138,7 @@ void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash
   } */
 
   // COLLISION_NOT_EXISTS: now let's insert at the end of the linked list
-  TripletStringHashNode *newCollision = (TripletStringHashNode*)malloc (sizeof (TripletStringHashNode));
-  memset (newCollision, 0, sizeof (TripletStringHashNode));
+  TripletStringHashNode *newCollision = (TripletStringHashNode*)calloc (sizeof (TripletStringHashNode), 1);
 
   prev->nextCollision = newCollision;
 
@@ -148,7 +147,7 @@ void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash
   // newCollision->hash = hash;
   newCollision->count = 1;
 
-  tsh->slotsUsageCount ++;
+  //tsh->slotsUsageCount ++;
 
 }
 

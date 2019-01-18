@@ -5,4 +5,5 @@ build
 *.files
 *.includes
 triplet_challenge
+triplet_challenge_*
 unit_test

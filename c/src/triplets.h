@@ -12,7 +12,7 @@ typedef enum {
   OPTIMIZE_SPACE = 1
 } TripletsOptimization;
 
-size_t sanitizeTripletsInput (char *buffer, size_t len);
+size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount);
 void countTripletsFromMemory (char *buffer, size_t len, TripletsOptimization op);
 void printThreeTripletsWithHighestCount (const TripletStringHash *tsh);
 int processTripletsFromFile (const char *fileName, TripletsOptimization op);

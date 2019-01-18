@@ -114,14 +114,14 @@ void countTripletsFromMemory (
   TripletsOptimization optimization
 )
 {
-  size_t newLen = sanitizeTripletsInput (buffer, len);
+  uint32_t wordCount = 0;
+  size_t newLen = sanitizeTripletsInput (buffer, len, &wordCount);
 
   if (buffer == NULL)
     return;
 
   // iterate triplets
-  const char *ptr = buffer,
-             *endPtr = buffer + newLen;
+  const char *endPtr = buffer + newLen;
 
   const char *word1 = buffer,
              *word2 = NULL,
@@ -154,24 +154,21 @@ void countTripletsFromMemory (
   hash2 = fnvHash32v ((const uint8_t *)word2, (size_t)(word3 - word2 - 1));
   hash3 = fnvHash32v ((const uint8_t *)word3, (size_t)(word4 - word3 - 1));
 
-  // Let's assume every word is around 6 chars and every triplet around 15.
-  // Let's assume every triplet appears mostly once.
+  // For speed, let's allocate a big buffer
   // For space let's say we want to allocate 100x less, but for speed let's be
   // generious with the space, like 1 slot per item approx.
   TripletStringHash *tsh = tshInit (
-    (optimization == OPTIMIZE_SPACE) ? newLen / 1500 : (newLen / 15)
+    (optimization == OPTIMIZE_SPACE) ? wordCount / 10 : (wordCount / 3)
   );
 
-  while ((ptr < endPtr) && (word4 != NULL)) {
+  while (word4 != NULL) {
     uint32_t tripletHash = ROL32(hash1, 16) ^ ROL32(hash2, 8) ^ hash3;
-    //uint32_t tripletHash = fnvHash32v((const uint8_t *)word1, (size_t)(word4 - word1 - 1));
-
+    // uint32_t tripletHash = fnvHash32v((const uint8_t *)word1, (size_t)(word4 - word1 - 1));
+    // printf ("tripletHash: %d\n", tripletHash);
     tshAdd (tsh, word1, (size_t)(word4 - word1 - 1), tripletHash);
 
     //printf ("%.*s\n", (int)(word4 - word1 - 1), word1);
     //printf ("Triplet[%08x]: -%.*s-\n", tripletHash, (int)(word4 - word1 - 1), word1);
-
-    // hashIncrement (word1, word2, word3, word4);
 
     // NOTE: this can be implemented using a static char[4] and cyclic index,
     //       but implemented this way for clarity
@@ -185,11 +182,30 @@ void countTripletsFromMemory (
       hash2 = hash3;
       hash3 = fnvHash32v ((const uint8_t *)word3, (size_t)(word4 - word3 - 1));
     }
-
-    ptr++;
   }
 
   printThreeTripletsWithHighestCount (tsh);
+
+  /*
+  int numCollisions = 0;
+  for (size_t i = 0; i < tsh->slotsAllocated; i++) {
+    const TripletStringHashNode *tshNodePtr = &tsh->nodes[i];
+
+    // iterate through all items on the linked list for this hash slot
+    while (tshNodePtr != NULL) {
+      if (tshNodePtr->nextCollision != NULL)
+        numCollisions++;
+
+      // if it has items on the linked list, iterate throught them
+      tshNodePtr = tshNodePtr->nextCollision;
+      if (tshNodePtr) {
+        printf ("count: %d\n", tshNodePtr->count);
+      }
+    }
+  }
+
+  printf ("numCollisions: %d\n", numCollisions);
+  */
 
   tshFree (tsh);
 
@@ -208,10 +224,11 @@ void countTripletsFromMemory (
 // Please note that '10asdf' and 'asdf10' will be considered a word, but
 // thngs like 'asdf-10' or 'asdf.asdf' will be splitted using a space.
 // -----------------------------------------------------------------------------
-size_t sanitizeTripletsInput (char *buffer, size_t len) {
+size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount) {
   char *readPtr = buffer, *writePtr = buffer, *endPtr = (buffer + len);
-
   register uint_fast8_t lastIsSpace = 1;
+
+  *wordCount = 0;
 
   // prepare buffer in one pass to lowercase words, remove punctuation chars
   // and allow only one space between words
@@ -240,6 +257,7 @@ size_t sanitizeTripletsInput (char *buffer, size_t len) {
         *writePtr = ' ';
         writePtr++;
         lastIsSpace = 1;
+        (*wordCount) ++;
       }
       else {
         // already overwritten a space (lastIsSpace = 1) so do nothing!
