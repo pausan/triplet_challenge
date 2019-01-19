@@ -8,15 +8,23 @@
 #include "triplet_string_hash.h"
 
 typedef enum {
-  OPTIMIZE_SPEED = 0,
-  OPTIMIZE_SPACE = 1,
-  USE_TRIES      = 2
+  HASH_TABLE_SPEED = 0,
+  HASH_TABLE_SPACE,
+  HASH_TABLE_SPLITTED
 } TripletsOptimization;
 
 typedef struct {
   const char *start;
   size_t      len;
 } StringPtr;
+
+// contains an array of strings, all of them of length "len"
+typedef struct {
+  const char **strings;
+  uint32_t  count;
+  uint32_t  capacity;
+  uint32_t  len;
+} FixedLenStringArray;
 
 typedef struct {
   struct {
@@ -26,8 +34,8 @@ typedef struct {
 } TripletResult;
 
 size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount);
-void countTripletsFromMemoryUsingHashTable (char *buffer, size_t len, TripletsOptimization op);
-void countTripletsFromMemoryUsingTries (char *buffer, size_t len);
+void countTripletsWithHashTable (char *buffer, size_t len, TripletsOptimization op);
+void countTripletsWithSplittedHashTable (char *buffer, size_t len);
 
 void mergeTriplets (TripletResult *winning, const TripletResult *other);
 

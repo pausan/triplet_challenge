@@ -37,6 +37,8 @@ WordTrie *trieInit () {
 // trieFree
 // -----------------------------------------------------------------------------
 void trieFree (WordTrie *trie) {
+  trie++; // ignore warning
+
   // FIXME! properly free memory here
   free (_trie_pool);
 }
@@ -132,3 +134,31 @@ void triePrint (WordTrie *trie) {
 
   _triePrintRecursively (trie, _trieWord, 0);
 }
+
+
+/*
+  WordTrie *trie = trieInit ();
+  trieAddWithLen (trie, "a", 1);
+  trieAddWithLen (trie, "a", 1);
+  trieAddWithLen (trie, "az", 2);
+  trieAddWithLen (trie, "a0", 2);
+  trieAddWithLen (trie, "a9", 2);
+  trieAddWithLen (trie, "a ", 2);
+  trieAddWithLen (trie, "az09", 4);
+  trieAddWithLen (trie, "az09", 4);
+  trieAddWithLen (trie, "az09end", 7);
+  trieAddWithLen (trie, "az09end", 7);
+  trieAddWithLen (trie, "az09endo", 8);
+
+  char c;
+  c = 'a'; printf ("%c - %d - %c\n", c, CHAR_TO_INDEX(c), INDEX_TO_CHAR(CHAR_TO_INDEX(c)));
+  c = 'z'; printf ("%c - %d - %c\n", c, CHAR_TO_INDEX(c), INDEX_TO_CHAR(CHAR_TO_INDEX(c)));
+  c = '0'; printf ("%c - %d - %c\n", c, CHAR_TO_INDEX(c), INDEX_TO_CHAR(CHAR_TO_INDEX(c)));
+  c = '9'; printf ("%c - %d - %c\n", c, CHAR_TO_INDEX(c), INDEX_TO_CHAR(CHAR_TO_INDEX(c)));
+  c = ' '; printf ("%c - %d - %c\n", c, CHAR_TO_INDEX(c), INDEX_TO_CHAR(CHAR_TO_INDEX(c)));
+
+  printf ("----------------------------------------------------------------\n");
+  triePrint (trie);
+  trieFree(trie);
+  exit(-1);
+*/

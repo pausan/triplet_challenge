@@ -15,8 +15,8 @@
 // -----------------------------------------------------------------------------
 int main (int argc, char *argv[])
 {
+  TripletsOptimization optimizationType = HASH_TABLE_SPLITTED;
   clock_t start_t = clock(), end_t;
-  TripletsOptimization optimizationType = OPTIMIZE_SPEED;
   int result = 0;
 
   if (argc < 2) {
@@ -27,16 +27,13 @@ int main (int argc, char *argv[])
   // adjust for speed/space
   if (argc >= 3) {
     if (strcmp(argv[2], "speed") == 0) {
-      optimizationType = OPTIMIZE_SPEED;
+      optimizationType = HASH_TABLE_SPEED;
     }
     else if (strcmp(argv[2], "space") == 0) {
-      optimizationType = OPTIMIZE_SPACE;
+      optimizationType = HASH_TABLE_SPACE;
     }
-    else if (
-      (strcmp(argv[2], "trie") == 0) ||
-      (strcmp(argv[2], "tries") == 0)
-    ) {
-      optimizationType = USE_TRIES;
+    else if (strcmp(argv[2], "splitted") == 0) {
+      optimizationType = HASH_TABLE_SPLITTED;
     }
     else {
       printf ("ERROR: unknown third parameter... ignoring %s", argv[2]);
