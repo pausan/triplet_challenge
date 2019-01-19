@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-CFLAGS := -g -O3 -pedantic -Wall -Wextra -lpthread
+CFLAGS := -g -O3 -pedantic -Wall -Wextra -pthread
 SRC_C := $(wildcard c/src/*.c)
 OBJ_C := $(foreach file,$(SRC_C),$(BUILD_DIR)/$(file:.c=.o))
 DEP_C := $(OBJ_C:.o=.d)

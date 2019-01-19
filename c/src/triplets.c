@@ -259,6 +259,20 @@ void countTripletsWithHashTable (
   // printf ("%ld: --%.*s--\n", newLen, newLen, buffer);
 }
 
+
+
+typedef struct {
+  TripletResult        tripletResult;
+  FixedLenStringArray *fixedLenStrings;
+} BestFixedLenTripletThreadData;
+
+void *pthreadFindBestFixedLenghtStringTriplets(void *data) {
+  BestFixedLenTripletThreadData *tdata = (BestFixedLenTripletThreadData *)data;
+  findBestFixedLenghtStringTriplets (&tdata->tripletResult, tdata->fixedLenStrings);
+  return NULL;
+}
+
+
 // -----------------------------------------------------------------------------
 // countTripletsWithSplittedHashTable
 //
@@ -380,29 +394,45 @@ void countTripletsWithSplittedHashTable (
     ] = stringPtr->start;
   }
 
+  pthread_t threads[MAX_BUCKETS];
+  uint32_t  threadCount = 0;
+  BestFixedLenTripletThreadData threadData[MAX_BUCKETS];
+  memset (&threadData, 0, sizeof(threadData));
+
   TripletResult winningTriplet;
-  memset (&winningTriplet, 0, sizeof(TripletResult));
+  memset (&winningTriplet, 0, sizeof(winningTriplet));
 
   // at this point we have a list of strings of the same size
   for (uint32_t bucketIndex = 0; bucketIndex < MAX_BUCKETS; bucketIndex++)
   {
     FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[bucketIndex];
-
-    // if array contains no strings, or the strings it contains is less than
-    // the lower count of the triplets, we can just ignore that list
-    if (
-      (fixedStringArrayOfLenI->count == 0)
-      || (fixedStringArrayOfLenI->count < winningTriplet.triplet[2].count)
-    ) {
+    if (fixedStringArrayOfLenI->count == 0)
       continue;
+
+    threadData[bucketIndex].fixedLenStrings = fixedStringArrayOfLenI;
+
+    if(
+      pthread_create(
+        &threads[threadCount++],
+        NULL,
+        pthreadFindBestFixedLenghtStringTriplets,
+        &threadData[bucketIndex]
+      )
+    ) {
+      fprintf(stderr, "Error creating thread\n");
+      return;
+    }
+  }
+
+  for (uint32_t th = 0; th < threadCount; th++) {
+    if(pthread_join(threads[th], NULL)) {
+      fprintf(stderr, "Error joining thread\n");
+      return;
     }
 
-    TripletResult tripletResult;
-    memset (&tripletResult, 0, sizeof(TripletResult));
-    findBestFixedLenghtStringTriplets(&tripletResult, fixedStringArrayOfLenI);
-
-    mergeTriplets (&winningTriplet, &tripletResult);
+    mergeTriplets (&winningTriplet, &threadData[th].tripletResult);
   }
+
 
   // print winning triplet
   printTriplet(&winningTriplet);
