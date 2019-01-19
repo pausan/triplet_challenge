@@ -12,7 +12,6 @@
 #include <fcntl.h>
 
 #include "triplet_string_hash.h"
-#include "word_trie.h"
 #include "triplets.h"
 
 #define IS_LOWER_ALPHANUM(x)   (     \
@@ -263,6 +262,18 @@ void countTripletsWithHashTable (
 // countTripletsWithSplittedHashTable
 //
 // Count and print top triplets from given memory buffer using a hash table.
+//
+// This algorithm divides the triplets in a list of lists containing triplets
+// of the same length, so that hashes are computed from those words with same
+// lenght.
+//
+// For each of those hashes, we get the winning triplet and then we merge
+// with previous winning triplet. That way we end up with the highest winning
+// triplet.
+//
+// There are two main advantages of this approach. First it runs faster because
+// it is less likely to have collisions, plus it also consumes less memory
+// since it works one list at a time.
 //
 // IMPORTANT: this method assumes it can manipulate and overwrite memory
 //            completely
