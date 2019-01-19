@@ -13,10 +13,17 @@
 
 // Hash Table primes selected for speed (not space)
 // See: https://planetmath.org/goodhashtableprimes
-#define HT_PRIMES_SIZE  11
+#define HT_PRIMES_SIZE  18
 static const uint32_t HT_PRIMES[HT_PRIMES_SIZE] = {
+  389,
+  769,
+  1543,
+  3079,
+  6151,
   12289,
   24593,
+  49157,
+  98317,
   196613,
   786433,
   1572869,

@@ -13,7 +13,8 @@
 // -----------------------------------------------------------------------------
 // main
 // -----------------------------------------------------------------------------
-int main (int argc, char *argv[]) {
+int main (int argc, char *argv[])
+{
   clock_t start_t = clock(), end_t;
   TripletsOptimization optimizationType = OPTIMIZE_SPEED;
   int result = 0;
@@ -30,6 +31,12 @@ int main (int argc, char *argv[]) {
     }
     else if (strcmp(argv[2], "space") == 0) {
       optimizationType = OPTIMIZE_SPACE;
+    }
+    else if (
+      (strcmp(argv[2], "trie") == 0) ||
+      (strcmp(argv[2], "tries") == 0)
+    ) {
+      optimizationType = USE_TRIES;
     }
     else {
       printf ("ERROR: unknown third parameter... ignoring %s", argv[2]);
