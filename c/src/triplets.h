@@ -5,6 +5,9 @@
 #ifndef _TRIPLETS_H_
 #define _TRIPLETS_H_
 
+#define debug(...)
+// #define debug(...)  printf (__VA_ARGS__);
+
 #include "triplet_string_hash.h"
 
 typedef enum {

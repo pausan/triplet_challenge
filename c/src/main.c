@@ -16,7 +16,7 @@
 int main (int argc, char *argv[])
 {
   TripletsOptimization optimizationType = HASH_TABLE_SPLITTED;
-  clock_t start_t = clock(), end_t;
+  clock_t start_t = clock();
   int result = 0;
 
   if (argc < 2) {
@@ -42,8 +42,8 @@ int main (int argc, char *argv[])
 
   result = processTripletsFromFile (argv[1], optimizationType);
 
-  end_t = clock();
-  printf ("Took %ld ms\n", ((end_t - start_t) / CLOCKS_PER_MILLIS) );
+  debug ("Took %ld ms\n", ((clock() - start_t) / CLOCKS_PER_MILLIS) );
+  start_t++; // skip warning
 
   return result;
 }

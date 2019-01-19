@@ -125,7 +125,7 @@ void printTriplet (const TripletResult *tripletResult) {
       continue;
 
     printf (
-      " >> %.*s - %u\n",
+      "%.*s - %u\n",
       (int)tripletResult->triplet[i].str.len,
       tripletResult->triplet[i].str.start,
       tripletResult->triplet[i].count
@@ -519,7 +519,7 @@ int processTripletsFromFile (
   char *addr = NULL;
   struct stat sb;
 
-  printf ("Processing %s...\n", fileName);
+  debug ("Processing %s...\n", fileName);
 
   if ((fd = open(fileName, O_RDONLY)) == -1) {
     printf ("ERROR: Cannot open file: %s\n", fileName);
