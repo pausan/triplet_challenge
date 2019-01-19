@@ -40,6 +40,10 @@ size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount);
 void countTripletsWithHashTable (char *buffer, size_t len, TripletsOptimization op);
 void countTripletsWithSplittedHashTable (char *buffer, size_t len);
 
+void findBestFixedLenghtStringTriplets (
+  TripletResult *result,
+  const FixedLenStringArray *fixedLenStrings
+);
 void mergeTriplets (TripletResult *winning, const TripletResult *other);
 
 void tshGetThreeTripletsWithHighestCount (const TripletStringHash *tsh, TripletResult *result);

@@ -2,6 +2,7 @@
 // Author: Pau Sanchez (contact@pausanchez.com)
 // License: MIT/GPLv3
 // -----------------------------------------------------------------------------
+#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -335,30 +336,33 @@ void countTripletsWithSplittedHashTable (
   }
 
 // FIXME! if any string is bigger than this value, program will crash
-#define STRING_OF_MAX_LEN  50
+#define MAX_BUCKETS 64
 
   uint32_t stringPtrCount = stringPtrIndex;
 
-  uint32_t stringsOfLengthXCount[STRING_OF_MAX_LEN];
+  uint32_t stringsOfLengthXCount[MAX_BUCKETS];
   memset (&stringsOfLengthXCount[0], 0, sizeof(stringsOfLengthXCount));
 
   // find out how many items of lenght X we have
-  for (uint32_t i = 0; i < stringPtrCount; i++) {
+  for (uint32_t i = 0; i < stringPtrCount; i++)
+  {
     StringPtr *stringPtr = &stringPtrList[i];
-    stringsOfLengthXCount[stringPtr->len] ++;
+    uint32_t   bucket    = stringPtr->len;
+    stringsOfLengthXCount[bucket] ++;
   }
 
-  /*
+/*
   // print items of length X
-  for (uint32_t i = 0; i < STRING_OF_MAX_LEN; i++) {
+  for (uint32_t i = 0; i < MAX_BUCKETS; i++) {
     if (stringsOfLengthXCount[i] > 0)
       printf ("# where len=%d => %d\n", i, stringsOfLengthXCount[i]);
   }*/
 
   // build a list sorted by items of length X
-  FixedLenStringArray fixedLenStrings[STRING_OF_MAX_LEN];
+  FixedLenStringArray fixedLenStrings[MAX_BUCKETS];
 
-  for (uint32_t i = 0; i < STRING_OF_MAX_LEN; i++) {
+  for (uint32_t i = 0; i < MAX_BUCKETS; i++)
+  {
     fixedLenStrings[i].capacity = stringsOfLengthXCount[i];
     fixedLenStrings[i].len      = i;
     fixedLenStrings[i].count    = 0;
@@ -366,10 +370,13 @@ void countTripletsWithSplittedHashTable (
   }
 
   // add all strings to its proper bucket of length _i_
-  for (uint32_t i = 0; i < stringPtrCount; i++) {
+  for (uint32_t i = 0; i < stringPtrCount; i++)
+  {
     StringPtr *stringPtr = &stringPtrList[i];
-    fixedLenStrings[stringPtr->len].strings[
-      fixedLenStrings[stringPtr->len].count++
+    uint32_t   bucket = stringPtr->len;
+
+    fixedLenStrings[bucket].strings[
+      fixedLenStrings[bucket].count++
     ] = stringPtr->start;
   }
 
@@ -377,10 +384,9 @@ void countTripletsWithSplittedHashTable (
   memset (&winningTriplet, 0, sizeof(TripletResult));
 
   // at this point we have a list of strings of the same size
-  for (uint32_t i = 0; i < STRING_OF_MAX_LEN; i++) {
-    FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[i];
-    const char          **strings = fixedStringArrayOfLenI->strings;
-    size_t                stringLen = fixedStringArrayOfLenI->len; // should be = i
+  for (uint32_t bucketIndex = 0; bucketIndex < MAX_BUCKETS; bucketIndex++)
+  {
+    FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[bucketIndex];
 
     // if array contains no strings, or the strings it contains is less than
     // the lower count of the triplets, we can just ignore that list
@@ -391,26 +397,43 @@ void countTripletsWithSplittedHashTable (
       continue;
     }
 
-    // use a hash table for all triplets of length N
-    TripletStringHash *tsh = tshInit (1.2*fixedStringArrayOfLenI->count);
-
-    for (uint32_t j = 0; j < fixedStringArrayOfLenI->count; j++) {
-      uint32_t tripletHash = fnvHash32v ((const uint8_t *)strings[j], stringLen);
-      tshAdd (tsh, strings[j], stringLen, tripletHash);
-    }
-
     TripletResult tripletResult;
     memset (&tripletResult, 0, sizeof(TripletResult));
-    tshGetThreeTripletsWithHighestCount (tsh, &tripletResult);
-    mergeTriplets (&winningTriplet, &tripletResult);
+    findBestFixedLenghtStringTriplets(&tripletResult, fixedStringArrayOfLenI);
 
-    tshFree(tsh);
+    mergeTriplets (&winningTriplet, &tripletResult);
   }
 
   // print winning triplet
   printTriplet(&winningTriplet);
 
   free(stringPtrList);
+}
+
+// -----------------------------------------------------------------------------
+// findBestFixedLenghtStringTriplets
+//
+// Finds the three triplets that appear the more times.
+// -----------------------------------------------------------------------------
+void findBestFixedLenghtStringTriplets (
+  TripletResult *tripletResult,
+  const FixedLenStringArray *fixedLenStrings
+)
+{
+  const char **strings = fixedLenStrings->strings;
+  size_t       stringLen = fixedLenStrings->len;
+
+  // use a hash table for all triplets of length N
+  TripletStringHash *tsh = tshInit (1.2*fixedLenStrings->count);
+
+  for (uint32_t j = 0; j < fixedLenStrings->count; j++) {
+    uint32_t tripletHash = fnvHash32v ((const uint8_t *)strings[j], stringLen);
+    tshAdd (tsh, strings[j], stringLen, tripletHash);
+  }
+
+  tshGetThreeTripletsWithHighestCount (tsh, tripletResult);
+
+  tshFree(tsh);
 }
 
 // -----------------------------------------------------------------------------
