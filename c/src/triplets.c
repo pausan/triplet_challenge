@@ -348,33 +348,7 @@ void countTripletsWithSplittedHashTable (
     word3 = word4;
     word4 = nextWord;
   }
-
-// FIXME! if any string is bigger than this value, program will crash
-#define __CHAR_TO_INDEX_ALNUMSPACE(x)  \
-  (                                    \
-    (x >= 'a')                         \
-    ? (x - 'a')                        \
-    : (                                \
-      (x >= '0')                       \
-      ? (('z'-'a' + 1) + (x - '0'))    \
-      : 36                             \
-    )                                  \
-  )
-
-//#define MAX_BUCKETS (64)
-//#define BUCKET_HASH_STR(len, ptr) (len)
-//#define BUCKET_LEN(bucket)        (bucket)
-
-#define MAX_BUCKETS (64 * 32)
-#define BUCKET_HASH_STR(len, ptr) \
-  ( \
-    ((len) << 5) \
-    | (( \
-      *(ptr) + *(ptr+1)*7 + *(ptr+len-1)*13 \
-    ) & 0x1f) \
-  )
-
-#define BUCKET_LEN(bucket)        ((bucket) >> 5)
+#define MAX_BUCKETS (64)
 
   uint32_t stringPtrCount = stringPtrIndex;
 
@@ -386,13 +360,7 @@ void countTripletsWithSplittedHashTable (
   for (uint32_t i = 0; i < stringPtrCount; i++)
   {
     StringPtr *stringPtr = &stringPtrList[i];
-    uint32_t   bucket    = BUCKET_HASH_STR(stringPtr->len, stringPtr->start);
-    /*uint32_t   bucket    = stringPtr->len;
-    uint32_t   bucket    = (stringPtr->len << 5) | (
-      (__CHAR_TO_INDEX_ALNUMSPACE(*stringPtr->start) & 0x1f) ^
-      (__CHAR_TO_INDEX_ALNUMSPACE(*(stringPtr->start+1)) & 0x1f) ^
-      (__CHAR_TO_INDEX_ALNUMSPACE(*(stringPtr->start+stringPtr->len-1)) & 0x1f)
-    );*/
+    uint32_t   bucket    = stringPtr->len;
     stringsOfLengthXCount[bucket] ++;
   }
 
@@ -411,7 +379,7 @@ void countTripletsWithSplittedHashTable (
   for (uint32_t i = 0; i < MAX_BUCKETS; i++)
   {
     fixedLenStrings[i].capacity = stringsOfLengthXCount[i];
-    fixedLenStrings[i].len      = BUCKET_LEN(i);
+    fixedLenStrings[i].len      = i;
     fixedLenStrings[i].count    = 0;
     fixedLenStrings[i].strings  = NULL;
 
@@ -423,8 +391,7 @@ void countTripletsWithSplittedHashTable (
   for (uint32_t i = 0; i < stringPtrCount; i++)
   {
     StringPtr *stringPtr = &stringPtrList[i];
-    //uint32_t   bucket = stringPtr->len;
-    uint32_t   bucket    = BUCKET_HASH_STR(stringPtr->len, stringPtr->start);
+    uint32_t   bucket = stringPtr->len;
 
     fixedLenStrings[bucket].strings[
       fixedLenStrings[bucket].count++
@@ -446,11 +413,21 @@ void countTripletsWithSplittedHashTable (
       continue;
     }
 
-    memset (&partialResult, 0, sizeof(partialResult));
+    /*memset (&partialResult, 0, sizeof(partialResult));
     findBestFixedLenghtStringTriplets (&partialResult, fixedStringArrayOfLenI);
+    printf ("-- hash:\n");
+    printTriplet(&partialResult);*/
 
-    //printTriplet(&partialResult);
-
+    memset (&partialResult, 0, sizeof(partialResult));
+    findBestFixedLenghtStringTripletsRadix (
+      &partialResult,
+      fixedStringArrayOfLenI,
+      winningTriplet.triplet[2].count
+    );
+/*    printf ("-- radix:\n");
+    printTriplet(&partialResult);
+    printf ("---------------\n");
+*/
     mergeTriplets (&winningTriplet, &partialResult);
   }
 
@@ -458,6 +435,125 @@ void countTripletsWithSplittedHashTable (
   printTriplet(&winningTriplet);
 
   free(stringPtrList);
+}
+
+// -----------------------------------------------------------------------------
+// findBestFixedLenghtStringTripletsRadix
+//
+// Finds the three triplets that appear the more times.
+// -----------------------------------------------------------------------------
+void findBestFixedLenghtStringTripletsRadix (
+  TripletResult *tripletResult,
+  FixedLenStringArray *fixedLenStrings,
+  uint32_t highestThirdCount
+)
+{
+  const char **strings = fixedLenStrings->strings;
+  size_t       stringLen = fixedLenStrings->len;
+
+
+  const char **tempStrings = calloc (fixedLenStrings->count, sizeof (char *));
+
+#define FIRST_CHAR ' '
+#define LAST_CHAR  'z'
+
+  uint32_t histogram [LAST_CHAR+1];
+  uint32_t offsets [LAST_CHAR+1];
+
+  for (size_t l = 0; l < stringLen; l++) {
+    memset (histogram, 0, sizeof (histogram));
+    memset (offsets, 0, sizeof (offsets));
+/*
+    // show input strings
+    printf ("===================== (total = %d)\n", fixedLenStrings->count);
+    for (size_t i = 0; i < fixedLenStrings->count; i++) {
+      printf ("Input(l=%ld): -%.*s-\n", l, (int)stringLen, strings[i]);
+    }
+*/
+    for (size_t i = 0; i < fixedLenStrings->count; i++) {
+      int ch = strings[i][l];
+      histogram[ch] ++;
+    }
+
+    // Find the third with highest count. Yes we find the ones with the
+    // two highest count, but we use this to discard all that we know
+    // we can ignore, and those are any strings whose count is lower than
+    // the third one.
+    //
+    // NOTE: several chars can have same count, so we would need to look
+    //       on all substrings on the next iteration before discarding them
+    uint32_t top1count = 0, top2count = 0, top3count = 0;
+
+    for (uint32_t ch = FIRST_CHAR; ch <= LAST_CHAR; ch++) {
+      uint32_t count = histogram[ch];
+      if (!count)
+        continue;
+
+      if (count > top1count) {
+        top3count = top2count;
+        top2count = top1count;
+        top1count = count;
+      }
+      else if (count > top2count) {
+        top3count = top2count;
+        top2count = count;
+      }
+      else if (count > top3count) {
+        top3count = count;
+      }
+
+      //printf ("Histogram: # where char=%c(%d) => %d\n", ch, ch, count);
+    }
+
+    if (highestThirdCount > top3count)
+      top3count = highestThirdCount;
+
+    // Let's sort substrings & remove those that won't make it to the top 3
+
+    //printf ("Top count: %d, %d, %d\n", top1count, top2count, top3count);
+
+    // Prepare a list of offsets so we can insert in order (for group l)
+    // lastOffset will have in the end the count of all items that we keep
+    uint32_t lastOffset = 0;
+    for (uint32_t ch = FIRST_CHAR; ch <= LAST_CHAR; ch++) {
+      if (histogram[ch] >= top3count) {
+        offsets[ch] = lastOffset;
+        lastOffset += histogram[ch];
+      }
+    }
+
+    for (size_t i = 0; i < fixedLenStrings->count; i++) {
+      int ch = strings[i][l];
+      if (histogram[ch] >= top3count)
+        tempStrings [ offsets[ch] ++ ] = strings[i];
+    }
+
+    // NOTE: this can be optimized using double buffer
+    memcpy (fixedLenStrings->strings, tempStrings, lastOffset * sizeof (char*));
+    fixedLenStrings->count = lastOffset;
+/*
+    printf ("===================== (total = %d)\n", fixedLenStrings->count);
+    for (size_t i = 0; i < fixedLenStrings->count; i++) {
+      printf ("Output(l=%ld): -%.*s-\n", l, (int)stringLen, fixedLenStrings->strings[i]);
+    }
+*/
+    break; // FIXME! more iterations will require more changes
+  }
+
+  free (tempStrings);
+
+  // FIXME!
+
+  // use a hash table for all triplets of length N
+  TripletStringHash *tsh = tshInit (1.2*fixedLenStrings->count);
+
+  for (uint32_t j = 0; j < fixedLenStrings->count; j++) {
+    uint32_t tripletHash = fnvHash32v ((const uint8_t *)strings[j], stringLen);
+    tshAdd (tsh, strings[j], stringLen, tripletHash);
+  }
+
+  tshGetThreeTripletsWithHighestCount (tsh, tripletResult);
+  tshFree(tsh);
 }
 
 // -----------------------------------------------------------------------------

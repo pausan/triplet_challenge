@@ -44,6 +44,13 @@ void findBestFixedLenghtStringTriplets (
   TripletResult *result,
   const FixedLenStringArray *fixedLenStrings
 );
+
+void findBestFixedLenghtStringTripletsRadix (
+  TripletResult *tripletResult,
+  FixedLenStringArray *fixedLenStrings,
+  uint32_t highestThirdCount
+);
+
 void mergeTriplets (TripletResult *winning, const TripletResult *other);
 
 void tshGetThreeTripletsWithHighestCount (const TripletStringHash *tsh, TripletResult *result);
