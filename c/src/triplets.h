@@ -13,7 +13,7 @@
 typedef enum {
   HASH_TABLE_SPEED = 0,
   HASH_TABLE_SPACE,
-  HASH_TABLE_SPLITTED
+  HASH_TABLE_RADIX
 } TripletsOptimization;
 
 typedef struct {

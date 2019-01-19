@@ -15,12 +15,12 @@
 // -----------------------------------------------------------------------------
 int main (int argc, char *argv[])
 {
-  TripletsOptimization optimizationType = HASH_TABLE_SPLITTED;
+  TripletsOptimization optimizationType = HASH_TABLE_RADIX;
   clock_t start_t = clock();
   int result = 0;
 
   if (argc < 2) {
-    printf ("Use: %s <input_file> [speed|space]\n", argv[0]);
+    printf ("Use: %s <input_file> [speed|space|radix]\n", argv[0]);
     return -1;
   }
 
@@ -32,8 +32,8 @@ int main (int argc, char *argv[])
     else if (strcmp(argv[2], "space") == 0) {
       optimizationType = HASH_TABLE_SPACE;
     }
-    else if (strcmp(argv[2], "splitted") == 0) {
-      optimizationType = HASH_TABLE_SPLITTED;
+    else if (strcmp(argv[2], "radix") == 0) {
+      optimizationType = HASH_TABLE_RADIX;
     }
     else {
       printf ("ERROR: unknown third parameter... ignoring %s", argv[2]);
