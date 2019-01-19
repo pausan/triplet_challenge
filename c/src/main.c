@@ -42,8 +42,8 @@ int main (int argc, char *argv[])
 
   result = processTripletsFromFile (argv[1], optimizationType);
 
-  debug ("Took %ld ms\n", ((clock() - start_t) / CLOCKS_PER_MILLIS) );
-  start_t++; // skip warning
+  if(argc >= 3)
+    printf ("Took %ld ms\n", ((clock() - start_t) / CLOCKS_PER_MILLIS) );
 
   return result;
 }

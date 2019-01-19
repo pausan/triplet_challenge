@@ -350,89 +350,109 @@ void countTripletsWithSplittedHashTable (
   }
 
 // FIXME! if any string is bigger than this value, program will crash
-#define MAX_BUCKETS 64
+#define __CHAR_TO_INDEX_ALNUMSPACE(x)  \
+  (                                    \
+    (x >= 'a')                         \
+    ? (x - 'a')                        \
+    : (                                \
+      (x >= '0')                       \
+      ? (('z'-'a' + 1) + (x - '0'))    \
+      : 36                             \
+    )                                  \
+  )
+
+//#define MAX_BUCKETS (64)
+//#define BUCKET_HASH_STR(len, ptr) (len)
+//#define BUCKET_LEN(bucket)        (bucket)
+
+#define MAX_BUCKETS (64 * 32)
+#define BUCKET_HASH_STR(len, ptr) \
+  ( \
+    ((len) << 5) \
+    | (( \
+      *(ptr) + *(ptr+1)*7 + *(ptr+len-1)*13 \
+    ) & 0x1f) \
+  )
+
+#define BUCKET_LEN(bucket)        ((bucket) >> 5)
 
   uint32_t stringPtrCount = stringPtrIndex;
 
   uint32_t stringsOfLengthXCount[MAX_BUCKETS];
   memset (&stringsOfLengthXCount[0], 0, sizeof(stringsOfLengthXCount));
 
+
   // find out how many items of lenght X we have
   for (uint32_t i = 0; i < stringPtrCount; i++)
   {
     StringPtr *stringPtr = &stringPtrList[i];
-    uint32_t   bucket    = stringPtr->len;
+    uint32_t   bucket    = BUCKET_HASH_STR(stringPtr->len, stringPtr->start);
+    /*uint32_t   bucket    = stringPtr->len;
+    uint32_t   bucket    = (stringPtr->len << 5) | (
+      (__CHAR_TO_INDEX_ALNUMSPACE(*stringPtr->start) & 0x1f) ^
+      (__CHAR_TO_INDEX_ALNUMSPACE(*(stringPtr->start+1)) & 0x1f) ^
+      (__CHAR_TO_INDEX_ALNUMSPACE(*(stringPtr->start+stringPtr->len-1)) & 0x1f)
+    );*/
     stringsOfLengthXCount[bucket] ++;
   }
 
 /*
   // print items of length X
   for (uint32_t i = 0; i < MAX_BUCKETS; i++) {
-    if (stringsOfLengthXCount[i] > 0)
-      printf ("# where len=%d => %d\n", i, stringsOfLengthXCount[i]);
-  }*/
+    if (!stringsOfLengthXCount[i])
+      continue;
 
+    printf ("# where len=%d => %d\n", i, stringsOfLengthXCount[i]);
+  }
+*/
   // build a list sorted by items of length X
   FixedLenStringArray fixedLenStrings[MAX_BUCKETS];
 
   for (uint32_t i = 0; i < MAX_BUCKETS; i++)
   {
     fixedLenStrings[i].capacity = stringsOfLengthXCount[i];
-    fixedLenStrings[i].len      = i;
+    fixedLenStrings[i].len      = BUCKET_LEN(i);
     fixedLenStrings[i].count    = 0;
-    fixedLenStrings[i].strings  = (const char**)calloc (fixedLenStrings[i].capacity, sizeof (const char*));
+    fixedLenStrings[i].strings  = NULL;
+
+    if (fixedLenStrings[i].capacity)
+      fixedLenStrings[i].strings  = (const char**)calloc (fixedLenStrings[i].capacity, sizeof (const char*));
   }
 
   // add all strings to its proper bucket of length _i_
   for (uint32_t i = 0; i < stringPtrCount; i++)
   {
     StringPtr *stringPtr = &stringPtrList[i];
-    uint32_t   bucket = stringPtr->len;
+    //uint32_t   bucket = stringPtr->len;
+    uint32_t   bucket    = BUCKET_HASH_STR(stringPtr->len, stringPtr->start);
 
     fixedLenStrings[bucket].strings[
       fixedLenStrings[bucket].count++
     ] = stringPtr->start;
   }
 
-  pthread_t threads[MAX_BUCKETS];
-  uint32_t  threadCount = 0;
-  BestFixedLenTripletThreadData threadData[MAX_BUCKETS];
-  memset (&threadData, 0, sizeof(threadData));
-
-  TripletResult winningTriplet;
+  TripletResult winningTriplet, partialResult;
   memset (&winningTriplet, 0, sizeof(winningTriplet));
 
   // at this point we have a list of strings of the same size
   for (uint32_t bucketIndex = 0; bucketIndex < MAX_BUCKETS; bucketIndex++)
   {
     FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[bucketIndex];
-    if (fixedStringArrayOfLenI->count == 0)
-      continue;
-
-    threadData[bucketIndex].fixedLenStrings = fixedStringArrayOfLenI;
-
-    if(
-      pthread_create(
-        &threads[threadCount++],
-        NULL,
-        pthreadFindBestFixedLenghtStringTriplets,
-        &threadData[bucketIndex]
-      )
+    if (
+      (!fixedStringArrayOfLenI->capacity)
+      || (!fixedStringArrayOfLenI->count)
+      || (fixedStringArrayOfLenI->count <= winningTriplet.triplet[2].count)
     ) {
-      fprintf(stderr, "Error creating thread\n");
-      return;
-    }
-  }
-
-  for (uint32_t th = 0; th < threadCount; th++) {
-    if(pthread_join(threads[th], NULL)) {
-      fprintf(stderr, "Error joining thread\n");
-      return;
+      continue;
     }
 
-    mergeTriplets (&winningTriplet, &threadData[th].tripletResult);
-  }
+    memset (&partialResult, 0, sizeof(partialResult));
+    findBestFixedLenghtStringTriplets (&partialResult, fixedStringArrayOfLenI);
 
+    //printTriplet(&partialResult);
+
+    mergeTriplets (&winningTriplet, &partialResult);
+  }
 
   // print winning triplet
   printTriplet(&winningTriplet);
