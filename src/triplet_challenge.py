@@ -23,7 +23,7 @@ def readAllWords (file):
   """
   lookup = getLookupTable()
 
-  ioWriter = io.BytesIO()
+  ioWriter = io.StringIO()
 
   word = []
   with open(file, 'rb') as f:
@@ -31,7 +31,7 @@ def readAllWords (file):
       chunk = f.read(65536)
       if chunk:
         for raw in chunk:
-          char = lookup[ord (raw)]
+          char = lookup[raw]
           ioWriter.write (char)
       else:
         break
