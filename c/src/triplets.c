@@ -616,7 +616,7 @@ size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount) {
     register char c = *readPtr;
 
     // skip valid chars
-    if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+    if (c >= 'A' && c <= 'Z') {
       *writePtr = c;
       writePtr ++;
 
@@ -627,6 +627,13 @@ size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount) {
     else if (c >= 'a' && c <= 'z') {
       *writePtr = (c - 'a') + 'A';
       writePtr++;
+
+      lastIsSpace = 0;
+    }
+
+    else if (c >= '0' && c <= '9') {
+      *writePtr = c;
+      writePtr ++;
 
       lastIsSpace = 0;
     }
