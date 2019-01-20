@@ -35,6 +35,24 @@ inline uint32_t fnvHash32v(const uint8_t *data, size_t n) {
   return result;
 }
 
+// -----------------------------------------------------------------------------
+// fnvHash32v16
+//
+// A variation of fnvHash32v that takes into account structure of data and
+// uses uint16_t words to iterate over it, which is faster.
+// -----------------------------------------------------------------------------
+inline uint32_t fnvHash32v16(const uint16_t *data, size_t nbytes) {
+  const uint32_t PRIME = 16777619;
+  uint32_t result = data[0];
+
+  // continue iterating through the rest of the string
+  for(size_t i = 0; i < (nbytes / 2); i++) {
+    result ^= data[i];
+    result *= PRIME;
+  }
+
+  return result;
+}
 
 // -----------------------------------------------------------------------------
 // TripletStringHash / TripletStringHashNode

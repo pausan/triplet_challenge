@@ -500,7 +500,7 @@ void findBestFixedLenghtStringTripletsByBounding (
 
   // compute all hashes in order to discard all collisions whose
   for (size_t i = 0; i < orgStringsCount; i++) {
-    uint32_t tripletHash = fnvHash32v ((const uint8_t *)strings[i], stringLen);
+    uint32_t tripletHash = fnvHash32v16 ((const uint16_t *)strings[i], stringLen);
     buckets[BUCKETS_MODULE(tripletHash)] ++;
     hashes[i] = tripletHash;
   }
