@@ -16,9 +16,10 @@ typedef enum {
   HASH_TABLE_RADIX
 } TripletsOptimization;
 
+#pragma pack(push,2)
 typedef struct {
   const char *start;
-  size_t      len;
+  uint32_t    len;
 } StringPtr;
 
 // contains an array of strings, all of them of length "len"
@@ -35,6 +36,7 @@ typedef struct {
     uint32_t  count;
   } triplet[3];
 } TripletResult;
+#pragma pack(pop)
 
 size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount);
 void countTripletsWithHashTable (char *buffer, size_t len, TripletsOptimization op);
@@ -45,9 +47,10 @@ void findBestFixedLenghtStringTriplets (
   const FixedLenStringArray *fixedLenStrings
 );
 
-void findBestFixedLenghtStringTripletsRadix (
+void findBestFixedLenghtStringTripletsByBounding (
   TripletResult *tripletResult,
   FixedLenStringArray *fixedLenStrings,
+  uint32_t *hashes,
   uint32_t highestThirdCount
 );
 

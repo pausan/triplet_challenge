@@ -26,3 +26,8 @@ dbg-%:
 	@echo "$* = $($*)"
 
 -include  $(DEP_C) $(UT_DEP)
+
+
+test:
+	/usr/bin/time -v ./triplet_challenge pg2009.txt radix
+	hyperfine -w 3 -m 30 "./triplet_challenge pg2009.txt"

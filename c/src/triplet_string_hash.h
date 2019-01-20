@@ -25,17 +25,9 @@
 inline uint32_t fnvHash32v(const uint8_t *data, size_t n) {
   const uint32_t PRIME = 16777619;
   uint32_t result = 0;
-  size_t i = 0;
-
-  // Hopefully this should affect word collisions and give us some
-  // speed boost as well (NOTE: I've not verified this!)
-  if (n >= 4) {
-    result = ((uint32_t *)data)[0];
-    i = 4;
-  }
 
   // continue iterating through the rest of the string
-  for( ; i < n; i++) {
+  for(size_t i = 0; i < n; i++) {
     result ^= data[i];
     result *= PRIME;
   }
