@@ -1,19 +1,20 @@
-
+#!/usr/bin/python3
+import re
 import os
 import sys
 import io
 from collections import Counter
 
 def getLookupTable ():
-  lookup = ['\n']*256
+  lookup = [32]*256
   for i in range(ord('a'), ord('z')):
-    lookup[i] = chr(i)
+    lookup[i] = i
 
   for i in range(ord('0'), ord('9')):
-    lookup[i] = chr(i)
+    lookup[i] = i
 
   for i in range(ord('A'), ord('Z')):
-    lookup[i] = chr(i + ord('a') - ord('A'))
+    lookup[i] = i + ord('a') - ord('A')
 
   return lookup
 
@@ -21,23 +22,21 @@ def readAllWords (file):
   """ Reads all words from file using ioWriter, and uses '\n' as delimiter
   so that we can skip lines
   """
-  lookup = getLookupTable()
-
   ioWriter = io.StringIO()
 
-  word = []
-  with open(file, 'rb') as f:
-    while True:
-      chunk = f.read(65536)
-      if chunk:
-        for raw in chunk:
-          char = lookup[raw]
-          ioWriter.write (char)
-      else:
-        break
+  lookup = getLookupTable()
+  transTable = str.maketrans ( { i : lookup[i] for i in range(0, 256) })
 
-    ioWriter.seek(0)
-    return [word.strip() for word in ioWriter.readlines() if word != '\n']
+  wordRegex = re.compile(r'\w+')
+
+  word = []
+  with open(file, 'rt') as f:
+    data = f.read().translate(transTable)
+
+    # TODO: explore other options of returning words
+    for s in data.split():
+      if s:
+        yield s
 
 def getTriplets(words):
   triplet = []
