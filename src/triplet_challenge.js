@@ -3,11 +3,11 @@ const fs = require('fs');
 const MAX_WORD_SIZE = 1024;
 
 // -----------------------------------------------------------------------------
-// getSanitizedWordsGenerator
+// allTripletsGenerator
 //
 // Returns a generator with all the words from the file once sanitized
 // -----------------------------------------------------------------------------
-function *getSanitizedWordsGenerator (raw) {
+function *allTripletsGenerator (raw) {
   const char_a = 'a'.charCodeAt(0);
   const char_z = 'z'.charCodeAt(0);
 
@@ -17,9 +17,12 @@ function *getSanitizedWordsGenerator (raw) {
   const char_0 = '0'.charCodeAt(0);
   const char_9 = '9'.charCodeAt(0);
 
-  const sanitizedWord = Buffer.alloc(MAX_WORD_SIZE, ' ', 'ascii');
+  const sanitizedWord = Buffer.alloc(raw.length, ' ', 'ascii');
 
   let lastChar = 0;
+
+  let w1start = 0, w2start = 0, w3start = 0;
+
   for (let i = 0, j = 0; i < raw.length; i++) {
     let char = raw[i];
 
@@ -33,38 +36,17 @@ function *getSanitizedWordsGenerator (raw) {
       sanitizedWord[j++] = char;
     }
     else {
-      if (j) {
-        const wordBytes = sanitizedWord.slice(0, j);
-        yield wordBytes;
+      if (j != w3start) {
+        const tripletBytes = sanitizedWord.slice(w1start, j);
+
+        j++;
+        if (w3start > 0)
+          yield tripletBytes.toString();
+
+        w1start = w2start;
+        w2start = w3start;
+        w3start = j;
       }
-
-      j = 0; // restart
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-// readSanitizedWords
-//
-// Read file, sanitizes it, and returns all input words
-// -----------------------------------------------------------------------------
-function readSanitizedWords (file) {
-  const allWordsGenerator = getSanitizedWordsGenerator (fs.readFileSync (file));
-  return allWordsGenerator;
-}
-
-// -----------------------------------------------------------------------------
-// getTripletsGenerator
-//
-// Yields all triplets using a generator
-// -----------------------------------------------------------------------------
-function *getTripletsGenerator (allWordsGenerator) {
-  const triplet = [];
-  for (const wordBytes of allWordsGenerator) {
-    triplet.push (wordBytes.toString());
-    if (triplet.length == 3) {
-      yield triplet.join(' ');
-      triplet.shift();
     }
   }
 }
@@ -74,11 +56,12 @@ function *getTripletsGenerator (allWordsGenerator) {
 //
 // Counts all triplets
 // -----------------------------------------------------------------------------
-function findTriplets (allWordsGenerator) {
+function findTriplets (file) {
   const tripletsByWordLength = new Array(MAX_WORD_SIZE);
+  const triplets = allTripletsGenerator (fs.readFileSync (file));
 
   const tripletsCount = new Map();
-  for (const triplet of getTripletsGenerator (allWordsGenerator)) {
+  for (const triplet of triplets) {
     if (!tripletsCount.has (triplet)) {
       tripletsCount.set (triplet, 1);
     }
@@ -113,8 +96,6 @@ function findTriplets (allWordsGenerator) {
   console.log (top3.v, '-', top3.c);
 }
 
-
-
 // -----------------------------------------------------------------------------
 // Main method
 // -----------------------------------------------------------------------------
@@ -126,8 +107,7 @@ function main () {
 
   fileToProcess = process.argv[2];
 
-  const allWordsGenerator = readSanitizedWords (fileToProcess);
-  findTriplets (allWordsGenerator);
+  findTriplets (fileToProcess);
 }
 
 
