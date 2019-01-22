@@ -77,21 +77,19 @@ function *getTripletsGenerator (allWordsGenerator) {
 function findTriplets (allWordsGenerator) {
   const tripletsByWordLength = new Array(MAX_WORD_SIZE);
 
-  const tripletsCount = new Map();
+  const tripletsCount = {};
   for (const triplet of getTripletsGenerator (allWordsGenerator)) {
-    if (!tripletsCount.has (triplet)) {
-      tripletsCount.set (triplet, 1);
-    }
-    else {
-      tripletsCount.set (triplet, tripletsCount.get (triplet) + 1);
-    }
+    if (triplet in tripletsCount)
+      tripletsCount[triplet] ++;
+    else
+      tripletsCount[triplet] = 1;
   }
 
   // Print triplets with highest count
   let top1 = { c: 0, v : ''};
   let top2 = { c: 0, v : ''};
   let top3 = { c: 0, v : ''};
-  for (var [triplet, count] of tripletsCount) {
+  for (var [triplet, count] of Object.entries(tripletsCount)) {
     if (count >= top1.c)  {
       top3 = top2;
       top2 = top1;
@@ -112,7 +110,6 @@ function findTriplets (allWordsGenerator) {
   console.log (top2.v, '-', top2.c);
   console.log (top3.v, '-', top3.c);
 }
-
 
 
 // -----------------------------------------------------------------------------
