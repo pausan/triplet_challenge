@@ -348,6 +348,13 @@ void countTripletsWithSplittedHashTable (
   StringOffset *stringOffsetList = calloc(wordCount, sizeof(StringOffset));
   uint32_t   stringOffsetIndex = 0;
 
+// NOTE: BUCKET_NPARTITIONS = 1           => fastest, most memory
+//       BUCKET_NPARTITIONS = MAX_BUCKETS => slowest, least memory
+#define BUCKET_NPARTITIONS      1
+#define MAX_BUCKETS             1024
+
+  const uint32_t bucketPartitionSize = MAX_BUCKETS / BUCKET_NPARTITIONS;
+
   while (word4 != NULL) {
     const char *nextWord = consumeWord(word4+1, endPtr);
     if (nextWord == NULL)
@@ -355,8 +362,9 @@ void countTripletsWithSplittedHashTable (
 
     // stringOffsetList[stringOffsetIndex].start = word1;
     stringOffsetList[stringOffsetIndex].offset = (uint32_t)(word1 - buffer);
-    stringOffsetList[stringOffsetIndex].len   = (int)(word4 - word1 - 1);
+    stringOffsetList[stringOffsetIndex].len    = (int)(word4 - word1 - 1);
     stringOffsetIndex++;
+
     // NOTE: this can be implemented using a static char[4] and cyclic index,
     //       but implemented this way for clarity
     word1 = word2;
@@ -365,100 +373,136 @@ void countTripletsWithSplittedHashTable (
     word4 = nextWord;
   }
 
-#define MAX_BUCKETS (1024)
-
   uint32_t stringOffsetCount = stringOffsetIndex;
 
-  uint32_t stringsOfLengthXCount[MAX_BUCKETS];
-  memset (&stringsOfLengthXCount[0], 0, sizeof(stringsOfLengthXCount));
+  uint32_t stringsOnBucketX[MAX_BUCKETS];
+  memset (&stringsOnBucketX[0], 0, sizeof(stringsOnBucketX));
 
   // find out how many items of lenght X we have
   for (uint32_t i = 0; i < stringOffsetCount; i++)
   {
     StringOffset *stringOffset = &stringOffsetList[i];
-    uint32_t   bucket    = stringOffset->len;
-    stringsOfLengthXCount[bucket] ++;
+    uint32_t   bucket = stringOffset->len;
+    stringsOnBucketX[bucket] ++;
   }
 
   // print items of length X
   // for (uint32_t i = 0; i < MAX_BUCKETS; i++) {
-  //   if (!stringsOfLengthXCount[i])
+  //   if (!stringsOnBucketX[i])
   //     continue;
-  //   printf ("# where len=%d => %d\n", i, stringsOfLengthXCount[i]);
+  //   printf ("# where len=%d => %d\n", i, stringsOnBucketX[i]);
   // }
-
-  // build a list sorted by items of length X
-  FixedLenStringArray fixedLenStrings[MAX_BUCKETS];
-  uint32_t maxStringsInABucket = 0;
-
-  for (uint32_t i = 0; i < MAX_BUCKETS; i++)
-  {
-    fixedLenStrings[i].capacity = stringsOfLengthXCount[i];
-    fixedLenStrings[i].len      = i;
-    fixedLenStrings[i].count    = 0;
-    fixedLenStrings[i].strings  = NULL;
-
-    if (fixedLenStrings[i].capacity) {
-      fixedLenStrings[i].strings  = (const char**)calloc (
-        fixedLenStrings[i].capacity,
-        sizeof (const char*)
-      );
-
-      if (fixedLenStrings[i].capacity >= maxStringsInABucket)
-        maxStringsInABucket = fixedLenStrings[i].capacity;
-    }
-  }
-
-  // add all strings to its proper bucket of length _i_
-  for (uint32_t i = 0; i < stringOffsetCount; i++)
-  {
-    StringOffset *stringOffset = &stringOffsetList[i];
-    uint32_t   bucket = stringOffset->len;
-
-    fixedLenStrings[bucket].strings[
-      fixedLenStrings[bucket].count++
-    ] = buffer + stringOffset->offset;
-  }
-
-  // we allocate the max required amount for any of the lists only once
-  uint32_t *hashes = (uint32_t*)malloc (maxStringsInABucket * sizeof (uint32_t));
 
   TripletResult winningTriplet, partialResult;
   memset (&winningTriplet, 0, sizeof(winningTriplet));
 
-  // at this point we have a list of strings of the same size
-  for (uint32_t bucketIndex = 0; bucketIndex < MAX_BUCKETS; bucketIndex++)
-  {
-    FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[bucketIndex];
-    if (
-      (!fixedStringArrayOfLenI->capacity)
-      || (!fixedStringArrayOfLenI->count)
-      || (fixedStringArrayOfLenI->count <= winningTriplet.triplet[2].count)
-    ) {
-      continue;
+  // build a list sorted by items of length X
+  FixedLenStringArray fixedLenStrings[MAX_BUCKETS];
+
+  for (uint32_t startBucket = 0; startBucket < MAX_BUCKETS; startBucket += bucketPartitionSize) {
+    uint32_t endBucket = (startBucket + bucketPartitionSize);
+    if (endBucket >= MAX_BUCKETS)
+      endBucket = MAX_BUCKETS;
+
+    uint32_t maxStringsInABucket = 0;
+
+    // if all buckets in this group don't really have any subset that can have
+    // more matches that the lowest winning triplet (third one), then why
+    // are we even going to analyze it?
+    int skipBlock = 1;
+    for (uint32_t i = startBucket; i < endBucket; i++) {
+      if (stringsOnBucketX[i] == 0)
+        continue;
+
+      if (stringsOnBucketX[i] < winningTriplet.triplet[2].count)
+        continue;
+
+      skipBlock = 0;
+      break;
     }
 
-    // memset (&partialResult, 0, sizeof(partialResult));
-    // findBestFixedLenghtStringTriplets (&partialResult, fixedStringArrayOfLenI);
-    // printf ("-- hash:\n");
-    // printTriplet(&partialResult);
+    if (skipBlock)
+      continue;
 
-    memset (&partialResult, 0, sizeof(partialResult));
-    findBestFixedLenghtStringTripletsByBounding (
-      &partialResult,
-      fixedStringArrayOfLenI,
-      hashes,
-      winningTriplet.triplet[2].count
-    );
+    // end of optimization
 
-    mergeTriplets (&winningTriplet, &partialResult);
+
+    // We process some buckets in order to find the winning triplets for these
+    // blocks.
+    for (uint32_t i = startBucket; i < endBucket; i++)
+    {
+      fixedLenStrings[i].capacity = stringsOnBucketX[i];
+      fixedLenStrings[i].len      = i;
+      fixedLenStrings[i].count    = 0;
+      fixedLenStrings[i].stringOffsets = NULL;
+
+      if (fixedLenStrings[i].capacity) {
+        fixedLenStrings[i].stringOffsets = (uint32_t*)calloc (
+          fixedLenStrings[i].capacity,
+          sizeof (uint32_t)
+        );
+
+        if (fixedLenStrings[i].capacity >= maxStringsInABucket)
+          maxStringsInABucket = fixedLenStrings[i].capacity;
+      }
+    }
+
+    // add all strings to its proper bucket of length _i_
+    for (uint32_t i = 0; i < stringOffsetCount; i++)
+    {
+      StringOffset *stringOffset = &stringOffsetList[i];
+      uint32_t   bucket = stringOffset->len;
+
+      if (bucket < startBucket || bucket >= endBucket)
+        continue;
+
+      fixedLenStrings[bucket].stringOffsets[
+        fixedLenStrings[bucket].count++
+      ] = stringOffset->offset;
+    }
+
+    // we allocate the max required amount for any of the lists only once
+    uint32_t *hashes = (uint32_t*)malloc (maxStringsInABucket * sizeof (uint32_t));
+
+    // at this point we have a list of strings of the same size
+    for (uint32_t bucketIndex = startBucket; bucketIndex < endBucket; bucketIndex++)
+    {
+      FixedLenStringArray  *fixedStringArrayOfLenI = &fixedLenStrings[bucketIndex];
+      if (
+        (!fixedStringArrayOfLenI->capacity)
+        || (!fixedStringArrayOfLenI->count)
+        || (fixedStringArrayOfLenI->count <= winningTriplet.triplet[2].count)
+      ) {
+        continue;
+      }
+
+      // memset (&partialResult, 0, sizeof(partialResult));
+      // findBestFixedLenghtStringTriplets (&partialResult, fixedStringArrayOfLenI);
+      // printf ("-- hash:\n");
+      // printTriplet(&partialResult);
+
+      memset (&partialResult, 0, sizeof(partialResult));
+      findBestFixedLenghtStringTripletsByBounding (
+        buffer,
+        &partialResult,
+        fixedStringArrayOfLenI,
+        hashes,
+        winningTriplet.triplet[2].count
+      );
+
+      mergeTriplets (&winningTriplet, &partialResult);
+    }
+
+    for (uint32_t i = startBucket; i < endBucket; i++) {
+      free(fixedLenStrings[i].stringOffsets);
+    }
+    free(hashes);
   }
 
   // print winning triplet
   printTriplet(&winningTriplet);
 
   free(stringOffsetList);
-  free(hashes);
 }
 
 // -----------------------------------------------------------------------------
@@ -482,14 +526,15 @@ void countTripletsWithSplittedHashTable (
 // hash table in the end to find the winning triplets.
 // -----------------------------------------------------------------------------
 void findBestFixedLenghtStringTripletsByBounding (
+  const char *buffer,
   TripletResult *tripletResult,
   FixedLenStringArray *fixedLenStrings,
   uint32_t *hashes,
   uint32_t highestThirdCount
 )
 {
-  const char    **strings = fixedLenStrings->strings;
-  size_t          stringLen = fixedLenStrings->len;
+  uint32_t *stringOffsets = fixedLenStrings->stringOffsets;
+  size_t    stringLen = fixedLenStrings->len;
   const uint_fast32_t orgStringsCount = fixedLenStrings->count;
 
 #define BUCKETS_SIZE (4*1024)
@@ -500,7 +545,7 @@ void findBestFixedLenghtStringTripletsByBounding (
 
   // compute all hashes in order to discard all collisions whose
   for (size_t i = 0; i < orgStringsCount; i++) {
-    uint32_t tripletHash = fnvHash32v16 ((const uint16_t *)strings[i], stringLen);
+    uint32_t tripletHash = fnvHash32v16 ((const uint16_t *)(buffer + stringOffsets[i]), stringLen);
     buckets[BUCKETS_MODULE(tripletHash)] ++;
     hashes[i] = tripletHash;
   }
@@ -509,7 +554,7 @@ void findBestFixedLenghtStringTripletsByBounding (
   for (size_t i = 0; i < orgStringsCount; i++) {
     if (buckets[BUCKETS_MODULE(hashes[i])] > highestThirdCount) {
       // since we know newStringsCount is less/eq to i, we can do:
-      strings [ newStringsCount ] = strings[i];
+      stringOffsets [ newStringsCount ] = stringOffsets[i];
       hashes  [ newStringsCount ] = hashes[i];
       newStringsCount++;
     }
@@ -521,7 +566,7 @@ void findBestFixedLenghtStringTripletsByBounding (
   TripletStringHash *tsh = tshInit (1.2*newStringsCount);
 
   for (uint32_t i = 0; i < newStringsCount; i++) {
-    tshAdd (tsh, strings[i], stringLen, hashes[i]);
+    tshAdd (tsh, buffer + stringOffsets[i], stringLen, hashes[i]);
   }
 
   tshGetThreeTripletsWithHighestCount (tsh, tripletResult);
@@ -534,19 +579,20 @@ void findBestFixedLenghtStringTripletsByBounding (
 // Finds the three triplets that appear the more times.
 // -----------------------------------------------------------------------------
 void findBestFixedLenghtStringTriplets (
+  const char *buffer,
   TripletResult *tripletResult,
   const FixedLenStringArray *fixedLenStrings
 )
 {
-  const char **strings = fixedLenStrings->strings;
-  size_t       stringLen = fixedLenStrings->len;
+  const uint32_t *stringOffsets = fixedLenStrings->stringOffsets;
+  size_t          stringLen = fixedLenStrings->len;
 
   // use a hash table for all triplets of length N
   TripletStringHash *tsh = tshInit (1.2*fixedLenStrings->count);
 
   for (uint32_t j = 0; j < fixedLenStrings->count; j++) {
-    uint32_t tripletHash = fnvHash32v ((const uint8_t *)strings[j], stringLen);
-    tshAdd (tsh, strings[j], stringLen, tripletHash);
+    uint32_t tripletHash = fnvHash32v ((const uint8_t *)(buffer + stringOffsets[j]), stringLen);
+    tshAdd (tsh, buffer + stringOffsets[j], stringLen, tripletHash);
   }
 
   tshGetThreeTripletsWithHighestCount (tsh, tripletResult);

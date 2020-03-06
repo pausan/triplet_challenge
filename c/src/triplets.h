@@ -29,7 +29,7 @@ typedef struct {
 
 // contains an array of strings, all of them of length "len"
 typedef struct {
-  const char **strings;
+  uint32_t *stringOffsets;
   uint32_t  count;
   uint32_t  capacity;
   uint16_t  len;
@@ -48,11 +48,13 @@ void countTripletsWithHashTable (char *buffer, size_t len, TripletsOptimization 
 void countTripletsWithSplittedHashTable (char *buffer, size_t len);
 
 void findBestFixedLenghtStringTriplets (
+  const char *buffer,
   TripletResult *result,
   const FixedLenStringArray *fixedLenStrings
 );
 
 void findBestFixedLenghtStringTripletsByBounding (
+  const char *buffer,
   TripletResult *tripletResult,
   FixedLenStringArray *fixedLenStrings,
   uint32_t *hashes,
