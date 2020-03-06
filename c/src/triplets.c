@@ -345,18 +345,18 @@ void countTripletsWithSplittedHashTable (
     return;
   }
 
-  StringPtr *stringPtrList = calloc(wordCount, sizeof(StringPtr));
-  uint32_t   stringPtrIndex = 0;
+  StringOffset *stringOffsetList = calloc(wordCount, sizeof(StringOffset));
+  uint32_t   stringOffsetIndex = 0;
 
   while (word4 != NULL) {
     const char *nextWord = consumeWord(word4+1, endPtr);
     if (nextWord == NULL)
       break;
 
-    stringPtrList[stringPtrIndex].start = word1;
-    stringPtrList[stringPtrIndex].len   = (int)(word4 - word1 - 1);
-    stringPtrIndex++;
-
+    // stringOffsetList[stringOffsetIndex].start = word1;
+    stringOffsetList[stringOffsetIndex].offset = (uint32_t)(word1 - buffer);
+    stringOffsetList[stringOffsetIndex].len   = (int)(word4 - word1 - 1);
+    stringOffsetIndex++;
     // NOTE: this can be implemented using a static char[4] and cyclic index,
     //       but implemented this way for clarity
     word1 = word2;
@@ -367,16 +367,16 @@ void countTripletsWithSplittedHashTable (
 
 #define MAX_BUCKETS (1024)
 
-  uint32_t stringPtrCount = stringPtrIndex;
+  uint32_t stringOffsetCount = stringOffsetIndex;
 
   uint32_t stringsOfLengthXCount[MAX_BUCKETS];
   memset (&stringsOfLengthXCount[0], 0, sizeof(stringsOfLengthXCount));
 
   // find out how many items of lenght X we have
-  for (uint32_t i = 0; i < stringPtrCount; i++)
+  for (uint32_t i = 0; i < stringOffsetCount; i++)
   {
-    StringPtr *stringPtr = &stringPtrList[i];
-    uint32_t   bucket    = stringPtr->len;
+    StringOffset *stringOffset = &stringOffsetList[i];
+    uint32_t   bucket    = stringOffset->len;
     stringsOfLengthXCount[bucket] ++;
   }
 
@@ -410,14 +410,14 @@ void countTripletsWithSplittedHashTable (
   }
 
   // add all strings to its proper bucket of length _i_
-  for (uint32_t i = 0; i < stringPtrCount; i++)
+  for (uint32_t i = 0; i < stringOffsetCount; i++)
   {
-    StringPtr *stringPtr = &stringPtrList[i];
-    uint32_t   bucket = stringPtr->len;
+    StringOffset *stringOffset = &stringOffsetList[i];
+    uint32_t   bucket = stringOffset->len;
 
     fixedLenStrings[bucket].strings[
       fixedLenStrings[bucket].count++
-    ] = stringPtr->start;
+    ] = buffer + stringOffset->offset;
   }
 
   // we allocate the max required amount for any of the lists only once
@@ -457,7 +457,7 @@ void countTripletsWithSplittedHashTable (
   // print winning triplet
   printTriplet(&winningTriplet);
 
-  free(stringPtrList);
+  free(stringOffsetList);
   free(hashes);
 }
 

@@ -18,8 +18,13 @@ typedef enum {
 
 #pragma pack(push,2)
 typedef struct {
+  uint32_t offset;
+  uint16_t len;
+} StringOffset;
+
+typedef struct {
   const char *start;
-  uint32_t    len;
+  uint16_t len;
 } StringPtr;
 
 // contains an array of strings, all of them of length "len"
@@ -27,7 +32,7 @@ typedef struct {
   const char **strings;
   uint32_t  count;
   uint32_t  capacity;
-  uint32_t  len;
+  uint16_t  len;
 } FixedLenStringArray;
 
 typedef struct {
