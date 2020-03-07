@@ -437,14 +437,14 @@ void countTripletsWithSplittedHashTable (
   // (three words of 1 letter + 2 spaces), thus, we can use the first 5 positions
   // to reorder
 
-  // find the top 5 most promising lists to explore (not necesarily the top-5
+  // find the top 4 most promising lists to explore (not necesarily the top-5
   // by score)
-  uint32_t bestIndex[5], bestScore[5];
+  uint32_t bestIndex[4], bestScore[4];
   memset (&bestIndex, 0, sizeof(bestIndex));
   memset (&bestScore, 0, sizeof(bestScore));
   for (uint32_t i = 0; i < MAX_BUCKETS; i++) {
     if (stringsOnBucketX[i] > bestScore[0]) {
-      for (uint32_t j = 4; j != 0; j--) {
+      for (uint32_t j = 3; j != 0; j--) {
         bestIndex[j] = bestIndex[j-1];
         bestScore[j] = bestScore[j-1];
       }
@@ -453,7 +453,7 @@ void countTripletsWithSplittedHashTable (
     }
   }
 
-  for (uint32_t j = 0; j < 5; j++) {
+  for (uint32_t j = 0; j < 4; j++) {
     memcpy(&fixedLenStrings[j], &fixedLenStrings[bestIndex[j]], sizeof(fixedLenStrings[0]));
     memset(&fixedLenStrings[bestIndex[j]], 0, sizeof(fixedLenStrings[0]));
   }
