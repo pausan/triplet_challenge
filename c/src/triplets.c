@@ -552,6 +552,10 @@ void findBestFixedLenghtStringTripletsByBounding (
     }
   }
 
+  // nothing to do
+  if (newStringsCount == 0)
+    return;
+
   fixedLenStrings->count = newStringsCount;
 
   // use a hash table for all triplets of length N

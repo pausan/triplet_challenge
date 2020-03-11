@@ -10,7 +10,7 @@
 
 #include "triplet_string_hash.h"
 
-
+#ifdef TSH_USE_MODULE
 // Hash Table primes selected for speed (not space)
 // See: https://planetmath.org/goodhashtableprimes
 #define HT_PRIMES_SIZE  18
@@ -34,6 +34,7 @@ static const uint32_t HT_PRIMES[HT_PRIMES_SIZE] = {
   100663319,
   201326611
 };
+#endif
 
 // -----------------------------------------------------------------------------
 // tshInit
@@ -41,16 +42,16 @@ static const uint32_t HT_PRIMES[HT_PRIMES_SIZE] = {
 // Initializes a triplet string hash
 // -----------------------------------------------------------------------------
 TripletStringHash *tshInit (uint32_t desiredSize) {
-  uint32_t i;
-
   TripletStringHash *tsh = (TripletStringHash*)calloc (sizeof (TripletStringHash), 1);
   if (tsh == NULL)
     return tsh;
 
-  tsh->slotsAllocated = 0;
-  //tsh->slotsUsageCount = 0;
   tsh->nodes = NULL;
 
+  tsh->slotsAllocated = 2;
+
+#ifdef TSH_USE_MODULE
+  uint32_t i;
   // find which space will suit the hash table best
   for ( i = 0; i < HT_PRIMES_SIZE; i++) {
     if (desiredSize < HT_PRIMES[i]) {
@@ -58,6 +59,14 @@ TripletStringHash *tshInit (uint32_t desiredSize) {
       break;
     }
   }
+#else // and-kind of module
+  //tsh->slotsUsageCount = 0;
+  while(tsh->slotsAllocated <= (2*desiredSize)) {
+    tsh->slotsAllocated <<= 1;
+  }
+
+  tsh->andBits = tsh->slotsAllocated - 1;
+#endif
 
   tsh->nodes = (TripletStringHashNode*)calloc (
     sizeof (TripletStringHashNode),
@@ -73,7 +82,11 @@ TripletStringHash *tshInit (uint32_t desiredSize) {
 // Insert an item into a TripletStringHash (or increment count if already exists)
 // -----------------------------------------------------------------------------
 void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash) {
+#ifdef TSH_USE_MODULE
   TripletStringHashNode *node = &(tsh->nodes[hash % tsh->slotsAllocated]);
+#else
+  TripletStringHashNode *node = &(tsh->nodes[hash & tsh->andBits]);
+#endif
 
   // EMPTY_CASE: inserting on an empty slot (easy peasy)
   if (node->str == NULL) {
@@ -115,8 +128,9 @@ void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash
       //       of the list.
       collision->count ++;
 
-      // not a lot of gain in practice...
-      /* if ((prev->count + 3) < collision->count) {
+      // not a lot of gain in practice for small lists with few collissions, but
+      // it works with big collissions
+      if ((prev->count + 3) < collision->count) {
         TripletStringHashNode temp;
         TripletStringHashNode *nextCollision = collision->nextCollision;
         memcpy (&temp, prev, sizeof(TripletStringHashNode));
@@ -126,7 +140,7 @@ void tshAdd (TripletStringHash *tsh, const char *word, size_t len, uint32_t hash
         // update pointers to the right values
         prev->nextCollision = collision;
         collision->nextCollision = nextCollision;
-      }*/
+      }
 
       return;
     }

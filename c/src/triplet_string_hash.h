@@ -86,6 +86,9 @@ typedef struct _TripletStringHashNode {
 
 typedef struct _TripletStringHash {
   uint32_t slotsAllocated;
+#ifndef TSH_USE_MODULE
+  uint32_t andBits;
+#endif
   //uint32_t slotsUsageCount;
 
   // TODO: we can use **nodes to avoid allocating all memory at once
