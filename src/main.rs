@@ -78,18 +78,25 @@ fn process_string_triplets (s : &str) {
   }
 }
 
-fn sanitize (in_str : String) -> String {
-  let mut out_str : String =  String::new();
+fn sanitize_words (contents : String) -> String {
+  let mut out_str : String = String::with_capacity(contents.len());
   let mut last_added = true;
 
-  for c in in_str.chars() {
+  for c in contents.chars() {
     if c.is_alphanumeric() {
       if !last_added {
         out_str.push (' ');
         last_added = true;
       }
 
-      out_str.push_str (&c.to_lowercase().to_string());
+      if c >= 'A' && c <= 'Z' {
+        out_str.push (
+          ((c as u8) - ('A' as u8) + ('a' as u8)) as char
+        );
+      }
+      else {
+        out_str.push(c);
+      }
     }
     else {
       last_added = false;
@@ -101,7 +108,7 @@ fn sanitize (in_str : String) -> String {
 
 fn process_file_triplets (file_name : &String) {
   let file_contents : String = fs::read_to_string(file_name).expect("Expecting a readable file");
-  let out_str : String = sanitize (file_contents);
+  let out_str : String = sanitize_words (file_contents);
   process_string_triplets (&out_str);
 }
 
