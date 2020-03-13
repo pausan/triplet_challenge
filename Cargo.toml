@@ -1,0 +1,13 @@
+[package]
+name = "triplet_challenge"
+version = "1.0.0"
+authors = ["Pau Sanchez"]
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+panic = "abort"
