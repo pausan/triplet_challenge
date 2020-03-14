@@ -4,6 +4,7 @@ import (
   "os"
   "fmt"
   "io/ioutil"
+  "sort"
 )
 
 type Triplet struct {
@@ -96,32 +97,25 @@ func fnvHash32(data []byte) uint32 {
 }
 
 // -----------------------------------------------------------------------------
+// Find a bucket for given byte slice
+// -----------------------------------------------------------------------------
+func bucketFor(data []byte) uint32 {
+  var PRIME uint32 = 16777619;
+  var size uint32 = uint32(len(data));
+  var result uint32 = size ^ PRIME;
+
+  result *= uint32(data[0])
+  result ^= uint32(data[((size-1)/2)]);
+  result *= uint32(data[size-1])
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
 // findHighestTripletsWithBounding
 // -----------------------------------------------------------------------------
-func findHighestTripletsWithBounding(tripletsOfLenghtX [][]byte, threshold int) []Triplet {
-  var counter map[ string ]int = make(map[string]int)
-
-  var hashes []uint32 = make ([]uint32, len(tripletsOfLenghtX))
-  var collisionMap []int = make ([]int, 10 + len(tripletsOfLenghtX) / 8)
-  var collisionMapLen uint32 = uint32(len(collisionMap))
-
-  for i := 0; i < len(tripletsOfLenghtX); i++ {
-    hash := fnvHash32 (tripletsOfLenghtX[i]) % collisionMapLen
-    collisionMap[hash] ++
-    hashes[i] = hash
-  }
-
-  newLen := 0
-  for i := 0; i < len(tripletsOfLenghtX); i++ {
-    if collisionMap [hashes[i]] <= threshold {
-      continue
-    }
-
-    tripletsOfLenghtX[newLen] = tripletsOfLenghtX[i]
-    newLen++
-  }
-
-  tripletsOfLenghtX = tripletsOfLenghtX[0:newLen]
+func findHighestTripletsWithBounding(tripletsOfLenghtX [][]byte) []Triplet {
+  var counter map[ string ]int = make(map[string]int, len(tripletsOfLenghtX))
 
   for i := 0; i < len(tripletsOfLenghtX); i++ {
     triplet := string(tripletsOfLenghtX[i])
@@ -150,11 +144,12 @@ func mergeTriplets (winning []Triplet, partial []Triplet) {
 }
 
 // -----------------------------------------------------------------------------
-// getTripletsPerLength
+// getTripletsInBuckets
 // -----------------------------------------------------------------------------
-func getTripletsPerLength (sanitized []byte) [][][]byte {
-
-  var tripletsPerLength [][][]byte = make([][][]byte, 128)
+func getTripletsInBuckets (sanitized []byte) [][][]byte {
+  const NUM_BUCKETS uint32 = 1 << 13
+  const BUCKETS_MASK uint32 = NUM_BUCKETS - 1
+  var bucketedTriplets [][][]byte = make([][][]byte, NUM_BUCKETS)
 
   off1, off2, off3 := 0, 0, 0
   for off:= 0; off < len(sanitized); off++ {
@@ -164,7 +159,8 @@ func getTripletsPerLength (sanitized []byte) [][][]byte {
 
     if off2 != 0 {
       triplet := sanitized[off3 : off]
-      tripletsPerLength[len(triplet)] = append (tripletsPerLength[len(triplet)], triplet)
+      bucket := bucketFor(triplet) & BUCKETS_MASK
+      bucketedTriplets[bucket] = append (bucketedTriplets[bucket], triplet)
     }
 
     off3 = off2
@@ -172,7 +168,7 @@ func getTripletsPerLength (sanitized []byte) [][][]byte {
     off1 = off + 1
   }
 
-  return tripletsPerLength
+  return bucketedTriplets
 }
 
 
@@ -182,22 +178,21 @@ func getTripletsPerLength (sanitized []byte) [][][]byte {
 func findTriplets (data []byte) {
   var sanitized []byte = sanitizeData (data)
 
-  tripletsPerLength := getTripletsPerLength(sanitized)
+  bucketedTriplets := getTripletsInBuckets(sanitized)
+
+  sort.Slice(bucketedTriplets, func(i, j int) bool {
+    return len(bucketedTriplets[i]) > len(bucketedTriplets[j])
+  })
 
   // iterate on each bucket of size X
-  var winningTriplets = []Triplet {
-    Triplet{"", 0},
-    Triplet{"", 0},
-    Triplet{"", 0},
-  }
-
-  for i := 0; i < len(tripletsPerLength); i++ {
-    if len(tripletsPerLength[i]) == 0 {
+  var winningTriplets = findHighestTripletsWithBounding (bucketedTriplets[0])
+  for i := 1; i < len(bucketedTriplets); i++ {
+    threshold := winningTriplets[2].count
+    if len(bucketedTriplets[i]) < threshold {
       continue
     }
 
-    threshold := winningTriplets[2].count
-    partialTriplets := findHighestTripletsWithBounding (tripletsPerLength[i], threshold)
+    partialTriplets := findHighestTripletsWithBounding (bucketedTriplets[i])
     mergeTriplets(winningTriplets, partialTriplets)
   }
 
