@@ -5,6 +5,40 @@ use std::{
   vec::Vec,
 };
 
+use std::hash::{Hasher, BuildHasherDefault};
+
+// FnvHasher64 from: https://github.com/servo/rust-fnv/blob/master/lib.rs
+pub struct FnvHasher64(u64);
+
+impl Default for FnvHasher64 {
+  #[inline]
+  fn default() -> FnvHasher64 {
+    FnvHasher64(0xcbf29ce484222325)
+  }
+}
+
+impl Hasher for FnvHasher64 {
+  #[inline]
+  fn finish(&self) -> u64 {
+    self.0
+  }
+
+  #[inline]
+  fn write(&mut self, bytes: &[u8]) {
+    let FnvHasher64(mut hash) = *self;
+
+    for byte in bytes.iter() {
+      hash = hash ^ (*byte as u64);
+      hash = hash.wrapping_mul(0x100000001b3);
+    }
+
+    *self = FnvHasher64(hash);
+  }
+}
+
+pub type FnvHashMap64<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher64>>;
+pub type MyHashMap<K,V> = FnvHashMap64<K,V>;
+
 #[derive(Clone)]
 struct Triplet {
   triplet : String,
@@ -69,7 +103,7 @@ fn bucketize(bytes : &[u8]) -> u32 {
   result
 }
 
-fn find_top3triplets_from_hashmap (triplets_hash : &HashMap<&str, u32>) -> Top3Triplets {
+fn find_top3triplets_from_hashmap (triplets_hash : &MyHashMap<&str, u32>) -> Top3Triplets {
   let mut winners : Top3Triplets = Top3Triplets {
     gold : Triplet::new(),
     silver : Triplet::new(),
@@ -100,19 +134,18 @@ fn find_top3triplets_from_hashmap (triplets_hash : &HashMap<&str, u32>) -> Top3T
 }
 
 fn find_top3_triplets (triplets : &Vec<&str>) -> Top3Triplets {
-  let mut triplets_hash : HashMap<&str, u32> = HashMap::default();
+  let mut triplets_hash : MyHashMap<&str, u32> = MyHashMap::with_capacity_and_hasher(
+    triplets.len(),
+    Default::default()
+  );
+
   for triplet in triplets {
-    if let Some(x) = triplets_hash.get_mut(triplet) {
-      *x += 1;
-    }
-    else {
-      triplets_hash.insert (triplet, 1);
-    }
+    let counter = triplets_hash.entry(&triplet).or_insert(0);
+    *counter += 1;
   }
 
   find_top3triplets_from_hashmap(&triplets_hash)
 }
-
 
 fn process_string_triplets (s : &str, _nwords: u32) {
   let mut whitespace_iter = s.split_whitespace();
