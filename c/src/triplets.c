@@ -19,16 +19,96 @@
 // into account the relative position of characters in ASCII
 #define SPACE_CHAR ':'
 
-// the alphabet goes from '0' to 'Z', so everything
-// above ':' till 'A' is not ALNUM
-#define IS_UPPER_ALPHANUM(x)   (     \
-  ( ((x) < ':') || ((x) >= 'A') ) \
-)
+// -----------------------------------------------------------------------------
+// use buildLookupTables to generate g_charLookup and g_isCharLookup
+//
+// These two tables are used to sanitize words in a quick way, without using
+// any branches, which basically speeds things up 2x for that part of the
+// challenge.
+// -----------------------------------------------------------------------------
+void buildLookupTables() {
+  uint8_t lookup[256], isCharLookup[256];
+  for (int c = 0; c < 256; c++) {
+    isCharLookup[c] = 1;
 
-/*#define IS_UPPER_ALPHANUM(x)   (     \
-  ( ((x) >= 'A') && ((x) <='Z') ) || \
-  ( ((x) >= '0') && ((x) <='9') )    \
-)*/
+    // skip valid chars (uppercase / digits)
+    if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+      lookup[c] = c;
+    }
+
+    // lowercase
+    else if (c >= 'a' && c <= 'z') {
+      lookup[c] = (c - 'a') + 'A';
+    }
+
+    // one space
+    else {
+      lookup[c] = SPACE_CHAR;
+      isCharLookup[c] = 0;
+    }
+  }
+
+  printf ("uint8_t g_charLookup[256] = {\n  ");
+  for (int c = 0; c < 256; c++) {
+    printf ("'%c'%c", lookup[c], c == 255 ? ' ' : ',');
+    if (c % 16 == 15)
+      printf ("\n  ");
+  }
+  printf ("\r};\n");
+
+  printf ("uint8_t g_isCharLookup[256] = {\n  ");
+  for (int c = 0; c < 256; c++) {
+    printf ("%d%c", isCharLookup[c], c == 255 ? ' ' : ',');
+    if (c % 16 == 15)
+      printf ("\n  ");
+  }
+  printf ("\r};\n");
+}
+
+
+// g_charLookup contains all alphanumeric characters transformed to
+// uppercase or space char
+static uint8_t g_charLookup[256] = {
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  '0','1','2','3','4','5','6','7','8','9',':',':',':',':',':',':',
+  ':','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
+  'P','Q','R','S','T','U','V','W','X','Y','Z',':',':',':',':',':',
+  ':','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
+  'P','Q','R','S','T','U','V','W','X','Y','Z',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
+  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':'
+};
+
+// g_charLookup contains 1 if given char index is a character or
+// o if it is a space
+static uint8_t g_isCharLookup[256] = {
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,
+  0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+  0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+// -----------------------------------------------------------------------------
+
 
 // -----------------------------------------------------------------------------
 // consumeWord
@@ -41,9 +121,6 @@ inline const char *consumeWord (const char *ptr, const char *endPtr) {
   // are we done?
   if ((ptr + 1) >= endPtr)
     return NULL;
-
-  //while (IS_UPPER_ALPHANUM (*ptr) && ptr < endPtr)
-  //  ptr++;
 
   // no need to check for endptr since we know last character is ':' on purpose
   while (*ptr != SPACE_CHAR)
@@ -191,7 +268,7 @@ void countTripletsWithHashTable (
 )
 {
   uint32_t wordCount = 0;
-  size_t newLen = sanitizeTripletsInput (buffer, len, &wordCount);
+  size_t newLen = sanitizeTripletsInput ((uint8_t*)buffer, len, &wordCount);
 
   if (buffer == NULL)
     return;
@@ -315,7 +392,7 @@ void countTripletsWithSplittedHashTable (
 )
 {
   uint32_t wordCount = 0;
-  size_t newLen = sanitizeTripletsInput (buffer, len, &wordCount);
+  size_t newLen = sanitizeTripletsInput ((uint8_t*)buffer, len, &wordCount);
 
   if (buffer == NULL)
     return;
@@ -367,7 +444,6 @@ void countTripletsWithSplittedHashTable (
     word3 = word4;
     word4 = nextWord;
   }
-
   uint32_t stringOffsetCount = stringOffsetIndex;
 
   uint32_t stringsOnBucketX[MAX_BUCKETS];
@@ -490,7 +566,7 @@ void countTripletsWithSplittedHashTable (
   // print winning triplet
   printTriplet(&winningTriplet);
 
-  // program is going to die anyway, why spend cycles freeing memory anyway?
+  // program is going to die, why spend cycles freeing memory anyway?
   // free(hashes);
   // free(allStrings);
   // free(stringOffsetList);
@@ -645,55 +721,28 @@ void mergeTriplets (TripletResult *winning, const TripletResult *other) {
 //            everything to uppercase, and spaces will be converted to ':'
 //            which lie between '0' and 'Z'. This way the output can still
 //            be read, and we keep the same rules.
+//
+// As a side note, this implementation avoids branches by using pregenerated
+// lookup tables. We save some few milliseconds by having it pregenerated.
 // -----------------------------------------------------------------------------
-size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount) {
-  char *readPtr = buffer, *writePtr = buffer, *endPtr = (buffer + len);
-  register uint_fast8_t lastIsSpace = 1;
+size_t sanitizeTripletsInput (uint8_t *buffer, size_t len, uint32_t *wordCount) {
+  uint8_t *readPtr = buffer, *writePtr = buffer, *endPtr = (buffer + len);
 
+  uint8_t last = 0;
   *wordCount = 0;
 
   // prepare buffer in one pass to lowercase words, remove punctuation chars
   // and allow only one space between words
   while (readPtr < endPtr) {
-    register char c = *readPtr;
+    uint8_t c = *readPtr++;
 
-    // skip valid chars
-    if (c >= 'A' && c <= 'Z') {
-      *writePtr = c;
-      writePtr ++;
+    *writePtr = g_charLookup[c];
+    writePtr += g_isCharLookup[c];
 
-      lastIsSpace = 0;
-    }
-
-    // lowercase
-    else if (c >= 'a' && c <= 'z') {
-      *writePtr = (c - 'a') + 'A';
-      writePtr++;
-
-      lastIsSpace = 0;
-    }
-
-    else if (c >= '0' && c <= '9') {
-      *writePtr = c;
-      writePtr ++;
-
-      lastIsSpace = 0;
-    }
-
-    // one space
-    else {
-      if (!lastIsSpace) {
-        *writePtr = SPACE_CHAR;
-        writePtr++;
-        lastIsSpace = 1;
-        (*wordCount) ++;
-      }
-      else {
-        // already overwritten a space (lastIsSpace = 1) so do nothing!
-      }
-    }
-
-    readPtr++;
+    uint8_t oneSpaceForNextWord = (!g_isCharLookup[c] && last != g_isCharLookup[c]);
+    writePtr += oneSpaceForNextWord;
+    *wordCount += oneSpaceForNextWord;
+    last = g_isCharLookup[c];
   }
 
   // NOTE: worst case scenario is output = input, in that case it is fine to

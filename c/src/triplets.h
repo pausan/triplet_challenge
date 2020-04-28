@@ -43,7 +43,7 @@ typedef struct {
 } TripletResult;
 #pragma pack(pop)
 
-size_t sanitizeTripletsInput (char *buffer, size_t len, uint32_t *wordCount);
+size_t sanitizeTripletsInput (uint8_t *buffer, size_t len, uint32_t *wordCount);
 void countTripletsWithHashTable (char *buffer, size_t len, TripletsOptimization op);
 void countTripletsWithSplittedHashTable (char *buffer, size_t len);
 
