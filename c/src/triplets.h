@@ -18,11 +18,6 @@ typedef enum {
 
 #pragma pack(push,2)
 typedef struct {
-  uint32_t offset;
-  uint16_t len;
-} StringOffset;
-
-typedef struct {
   const char *start;
   uint16_t len;
 } StringPtr;

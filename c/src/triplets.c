@@ -15,9 +15,7 @@
 #include "triplet_string_hash.h"
 #include "triplets.h"
 
-// ':' is used for a more compact tables (instead of ' '), taking
-// into account the relative position of characters in ASCII
-#define SPACE_CHAR ':'
+#define SPACE_CHAR ' '
 
 // -----------------------------------------------------------------------------
 // use buildLookupTables to generate g_charLookup and g_isCharLookup
@@ -31,14 +29,14 @@ void buildLookupTables() {
   for (int c = 0; c < 256; c++) {
     isCharLookup[c] = 1;
 
-    // skip valid chars (uppercase / digits)
-    if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+    // skip valid chars (lowercase / digits)
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
       lookup[c] = c;
     }
 
-    // lowercase
-    else if (c >= 'a' && c <= 'z') {
-      lookup[c] = (c - 'a') + 'A';
+    // uppercase
+    else if (c >= 'A' && c <= 'Z') {
+      lookup[c] = (c - 'A') + 'a';
     }
 
     // one space
@@ -65,26 +63,25 @@ void buildLookupTables() {
   printf ("\r};\n");
 }
 
-
 // g_charLookup contains all alphanumeric characters transformed to
-// uppercase or space char
+// lowercase or space char
 static uint8_t g_charLookup[256] = {
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  '0','1','2','3','4','5','6','7','8','9',':',':',':',':',':',':',
-  ':','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
-  'P','Q','R','S','T','U','V','W','X','Y','Z',':',':',':',':',':',
-  ':','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
-  'P','Q','R','S','T','U','V','W','X','Y','Z',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',
-  ':',':',':',':',':',':',':',':',':',':',':',':',':',':',':',':'
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  '0','1','2','3','4','5','6','7','8','9',' ',' ',' ',' ',' ',' ',
+  ' ','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o',
+  'p','q','r','s','t','u','v','w','x','y','z',' ',' ',' ',' ',' ',
+  ' ','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o',
+  'p','q','r','s','t','u','v','w','x','y','z',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',
+  ' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '
 };
 
 // g_charLookup contains 1 if given char index is a character or
@@ -215,28 +212,12 @@ void printTriplet (const TripletResult *tripletResult) {
     if (tripletResult->triplet[i].count == 0)
       continue;
 
-    /* printf ("%.*s - %u\n",
-      (int)tripletResult->triplet[i].str.len,
+    printf (
+      "%.*s - %u\n",
+      tripletResult->triplet[i].str.len,
       tripletResult->triplet[i].str.start,
       tripletResult->triplet[i].count
-    ); */
-
-    // normalize output to lowercase and spaces
-    char *triplet = strndup (
-      tripletResult->triplet[i].str.start,
-      tripletResult->triplet[i].str.len
     );
-
-    for (size_t j = 0; j < tripletResult->triplet[i].str.len; j++) {
-      if (triplet[j] == SPACE_CHAR)
-        triplet[j] = ' ';
-      else if (triplet[j] >= 'A')
-        triplet[j] = triplet[j] + ('a' - 'A');
-    }
-
-    printf ("%s - %u\n", triplet, tripletResult->triplet[i].count);
-
-    free (triplet);
   }
 }
 
@@ -394,68 +375,52 @@ void countTripletsWithSplittedHashTable (
   uint32_t wordCount = 0;
   size_t newLen = sanitizeTripletsInput ((uint8_t*)buffer, len, &wordCount);
 
-  if (buffer == NULL)
+  if (buffer == NULL || wordCount < 3)
     return;
 
   // iterate triplets
   const char *endPtr = buffer + newLen;
 
-  const char *word1 = buffer,
-             *word2 = NULL,
-             *word3 = NULL,
-             *word4 = NULL;
-
-  // find first three words, please note each word starts the next character
-  // where previous ends (+1 because we skip only one space)
-  word2 = consumeWord(word1, endPtr);
-  if (word2 == NULL)
-    return;
-
-  word3 = consumeWord(word2, endPtr);
-  if (word3 == NULL)
-    return;
-
-  word4 = consumeWord(word3, endPtr);
-  if (word4 == NULL || (word4 >= endPtr)) {
-    printf ("Only one triplet\n");
-    printf (" - %s", buffer);
-    return;
-  }
-
-  StringOffset *stringOffsetList = (StringOffset *)malloc(wordCount * sizeof(StringOffset));
-  uint32_t   stringOffsetIndex = 0;
+  uint32_t *words = (uint32_t *)malloc(wordCount * sizeof(uint32_t));
+  uint16_t *wordsLen = (uint16_t *)malloc(wordCount * sizeof(uint16_t));
+  uint32_t  wordIndex = 0;
 
 #define MAX_BUCKETS  512
-
-  while (word4 != NULL) {
-    const char *nextWord = consumeWord(word4+1, endPtr);
-    if (nextWord == NULL)
-      break;
-
-    // stringOffsetList[stringOffsetIndex].start = word1;
-    stringOffsetList[stringOffsetIndex].offset = (uint32_t)(word1 - buffer);
-    stringOffsetList[stringOffsetIndex].len    = (int)(word4 - word1 - 1);
-    stringOffsetIndex++;
-
-    // NOTE: this can be implemented using a static char[4] and cyclic index,
-    //       but implemented this way for clarity
-    word1 = word2;
-    word2 = word3;
-    word3 = word4;
-    word4 = nextWord;
-  }
-  uint32_t stringOffsetCount = stringOffsetIndex;
-
   uint32_t stringsOnBucketX[MAX_BUCKETS];
   memset (&stringsOnBucketX[0], 0, sizeof(stringsOnBucketX));
 
-  // find out how many items of lenght X we have
-  for (uint32_t i = 0; i < stringOffsetCount; i++)
-  {
-    StringOffset *stringOffset = &stringOffsetList[i];
-    uint32_t   bucket = stringOffset->len;
-    stringsOnBucketX[bucket] ++;
+  // first word!
+  words[wordIndex] = 0;
+  wordIndex++;
+
+  // find the beginning of each word
+  const char *ptr = buffer+1;
+  while (ptr < endPtr) {
+    int isSpace = (*ptr == SPACE_CHAR);
+
+    words[wordIndex] = (uint32_t)(ptr - buffer) + 1;
+    wordIndex += isSpace;
+
+    ptr++;
   }
+
+  // find out the length of each triplet once we identified the beginning
+  // of each word
+  uint32_t ntriplets = wordIndex;
+  for (uint32_t i = 3; i < ntriplets; i++) {
+    uint16_t len = words[i] - words[i-3] - 1;
+    wordsLen[i-3] = len;
+    stringsOnBucketX[len] ++;
+  }
+
+  // last three items don't have enough words to form a triplet
+  ntriplets -= 3;
+
+  // printf ("%.*s\n", (uint32_t)(endPtr - buffer + 1), buffer);
+  // for (uint32_t i = 0; i < ntriplets; i++) {
+  //   printf ("%04x:%3d: %.*s\n", words[i], wordsLen[i], wordsLen[i], buffer+words[i]);
+  // }
+  //exit(0);
 
   // print items of length X
   // for (uint32_t i = 0; i < MAX_BUCKETS; i++) {
@@ -470,7 +435,7 @@ void countTripletsWithSplittedHashTable (
   uint32_t maxStringsInABucket = 0;
 
   // do a single string allocation for the total capacity
-  uint32_t *allStrings = (uint32_t*)malloc (stringOffsetCount * sizeof (uint32_t));
+  uint32_t *allStrings = (uint32_t*)malloc (ntriplets * sizeof (uint32_t));
   uint32_t  allocationIndex = 0;
 
   // build a list sorted by items of length X
@@ -496,14 +461,13 @@ void countTripletsWithSplittedHashTable (
   }
 
   // add all strings to its proper bucket of length _i_
-  for (uint32_t i = 0; i < stringOffsetCount; i++)
+  for (uint32_t i = 0; i < ntriplets; i++)
   {
-    StringOffset *stringOffset = &stringOffsetList[i];
-    uint32_t bucket = stringOffset->len;
+    uint32_t bucket = wordsLen[i];
 
     fixedLenStrings[bucket].stringOffsets[
       fixedLenStrings[bucket].count++
-    ] = stringOffset->offset;
+    ] = words[i];
   }
 
   // we allocate the max required amount for any of the lists only once
@@ -569,7 +533,7 @@ void countTripletsWithSplittedHashTable (
   // program is going to die, why spend cycles freeing memory anyway?
   // free(hashes);
   // free(allStrings);
-  // free(stringOffsetList);
+  // free(words);
 }
 
 
@@ -714,13 +678,6 @@ void mergeTriplets (TripletResult *winning, const TripletResult *other) {
 //
 // Please note that '10asdf' and 'asdf10' will be considered a word, but
 // thngs like 'asdf-10' or 'asdf.asdf' will be splitted using a space.
-//
-// IMPORTANT: althought the result should be in lowercase, since in ASCII
-//            the distance between digits and uppercase letters is lower,
-//            to avoid using a lookup table, we are going to convert
-//            everything to uppercase, and spaces will be converted to ':'
-//            which lie between '0' and 'Z'. This way the output can still
-//            be read, and we keep the same rules.
 //
 // As a side note, this implementation avoids branches by using pregenerated
 // lookup tables. We save some few milliseconds by having it pregenerated.

@@ -30,7 +30,7 @@ dbg-%:
 
 test:
 	/usr/bin/time -v ./triplet_challenge pg2009.txt radix
-	hyperfine -w 3 -m 130 "./triplet_challenge pg2009.txt"
+	hyperfine -w 3 -m 300 "./triplet_challenge pg2009.txt"
 
 test-big:
 	/usr/bin/time -v ./triplet_challenge gutenberg-utf-8.txt radix
